@@ -10,10 +10,30 @@ The `.mdz` format is a portable, self-contained document format that packages on
 
 Requires [.NET 10 SDK](https://dotnet.microsoft.com/download) or later.
 
+### One-line install
+
+Linux:
+
 ```bash
-git clone https://github.com/kylemwhite/mdz-cli.git
-cd mdz-cli
-dotnet build src/mdz/mdz.csproj
+curl -fsSL https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.sh | sh
+```
+
+macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.ps1 | iex
+```
+
+After install, run:
+
+```bash
+mdz --help
 ```
 
 ---

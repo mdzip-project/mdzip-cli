@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Mdz.Models;
 
 namespace Mdz.Core;
@@ -22,6 +23,9 @@ public static class MdzArchive
 {
     private const string ManifestFileName = "manifest.json";
     private const string SupportedMajorVersion = "1";
+    private static readonly Regex SemVerRegex = new(
+        @"^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+(?<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -349,9 +353,8 @@ public static class MdzArchive
                         errors.Add("ERR_MANIFEST_INVALID: manifest.json is missing required field 'mdz'.");
                     else
                     {
-                        // Validate spec version major
-                        var parts = manifest.Mdz.Split('.');
-                        if (parts.Length < 1 || !int.TryParse(parts[0], out var major))
+                        // Validate SemVer 2.0.0 and then enforce supported major version.
+                        if (!TryParseSemVerMajor(manifest.Mdz, out var major))
                             errors.Add($"ERR_MANIFEST_INVALID: 'mdz' field '{manifest.Mdz}' is not a valid semver string.");
                         else if (major.ToString() != SupportedMajorVersion)
                             errors.Add($"ERR_VERSION_UNSUPPORTED: manifest 'mdz' major version {major} is not supported (supported: {SupportedMajorVersion}).");
@@ -438,6 +441,16 @@ public static class MdzArchive
         var ext = Path.GetExtension(path).ToLowerInvariant();
         return ext is ".md" or ".markdown" or ".json" or ".txt" or ".css" or ".html" or ".htm"
             or ".xml" or ".svg" or ".yaml" or ".yml" or ".toml";
+    }
+
+    private static bool TryParseSemVerMajor(string version, out int major)
+    {
+        major = default;
+        var match = SemVerRegex.Match(version);
+        if (!match.Success)
+            return false;
+
+        return int.TryParse(match.Groups["major"].Value, out major);
     }
 
     private static string NormaliseLf(string content) =>

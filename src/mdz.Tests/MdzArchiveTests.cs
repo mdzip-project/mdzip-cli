@@ -371,6 +371,52 @@ public class MdzArchiveTests : IDisposable
     }
 
     [Fact]
+    public void Validate_MdzVersionNotSemVer_IsInvalid()
+    {
+        var archivePath = NewArchivePath();
+
+        using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var idxEntry = zip.CreateEntry("index.md");
+            using (var s = idxEntry.Open()) s.Write(Encoding.UTF8.GetBytes("# Hello"));
+
+            var mEntry = zip.CreateEntry("manifest.json");
+            using var ms = mEntry.Open();
+            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { mdz = "1", title = "Doc" })));
+        }
+
+        var result = MdzArchive.Validate(archivePath);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("ERR_MANIFEST_INVALID") && e.Contains("not a valid semver string"));
+    }
+
+    [Fact]
+    public void Validate_MdzVersionSemVerPrereleaseWithBuild_IsValid()
+    {
+        var archivePath = NewArchivePath();
+
+        using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var idxEntry = zip.CreateEntry("index.md");
+            using (var s = idxEntry.Open()) s.Write(Encoding.UTF8.GetBytes("# Hello"));
+
+            var mEntry = zip.CreateEntry("manifest.json");
+            using var ms = mEntry.Open();
+            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+            {
+                mdz = "1.0.0-alpha.1+exp.sha.5114f85",
+                title = "Doc"
+            })));
+        }
+
+        var result = MdzArchive.Validate(archivePath);
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
     public void Validate_NoEntryPoint_IsInvalid()
     {
         var archivePath = NewArchivePath();
