@@ -105,6 +105,27 @@ public class MdzArchiveTests : IDisposable
         Assert.Contains("assets/images/pic.png", paths);
     }
 
+    [Fact]
+    public void Create_NoIndexAndAmbiguousRootMarkdown_Throws()
+    {
+        var src = MakeSourceDir(("doc1.md", "# One"), ("doc2.md", "# Two"));
+        var archivePath = NewArchivePath();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => MdzArchive.Create(archivePath, src));
+        Assert.Contains("No unambiguous entry point", ex.Message);
+    }
+
+    [Fact]
+    public void Create_ManifestEntryPointMissing_Throws()
+    {
+        var src = MakeSourceDir(("index.md", "# Hello"));
+        var archivePath = NewArchivePath();
+        var manifest = new Manifest { Mdz = "1.0.0", Title = "Doc", EntryPoint = "missing.md" };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => MdzArchive.Create(archivePath, src, manifest));
+        Assert.Contains("entryPoint", ex.Message);
+    }
+
     // -------------------------------------------------------------------------
     // Extract
     // -------------------------------------------------------------------------
@@ -245,9 +266,15 @@ public class MdzArchiveTests : IDisposable
     [Fact]
     public void ResolveEntryPoint_MultipleRootMarkdownNoIndex_ReturnsNull()
     {
-        var src = MakeSourceDir(("doc1.md", "# Doc 1"), ("doc2.md", "# Doc 2"));
         var archivePath = NewArchivePath();
-        MdzArchive.Create(archivePath, src);
+
+        using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var e1 = zip.CreateEntry("doc1.md");
+            using (var s = e1.Open()) s.Write(Encoding.UTF8.GetBytes("# Doc 1"));
+            var e2 = zip.CreateEntry("doc2.md");
+            using (var s = e2.Open()) s.Write(Encoding.UTF8.GetBytes("# Doc 2"));
+        }
 
         var entryPoint = MdzArchive.ResolveEntryPoint(archivePath);
 

@@ -1,4 +1,4 @@
-# mdz command line-interface (CLI)
+# mdz command-line interface (CLI)
 
 A .NET command-line interface written in C# for creating, extracting, validating, and inspecting `.mdz` files.
 
@@ -12,10 +12,10 @@ Binaries are distributed as prebuilt release assets. `.NET` is not required for 
 
 ### One-line install
 
-Linux/macOS:
+Windows (PowerShell, will put `mdz.cmd` in `%LOCALAPPDATA%\Microsoft\WindowsApps` ):
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.sh | sh
+```powershell
+irm https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.ps1 | iex
 ```
 
 Linux/macOS system-wide install (recommended if you can use sudo):
@@ -24,22 +24,23 @@ Linux/macOS system-wide install (recommended if you can use sudo):
 curl -fsSL https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.sh | sudo sh
 ```
 
-Windows (PowerShell):
+Linux/macOS:
 
-```powershell
-irm https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.ps1 | iex
+```bash
+curl -fsSL https://raw.githubusercontent.com/kylemwhite/mdz-cli/main/scripts/install.sh | sh
 ```
 
-Windows executable location:
+If `mdz` is not found after non-sudo install, add `~/.local/bin` to your PATH:
 
-```text
-%LOCALAPPDATA%\mdz-cli\mdz.exe
-```
+```bash
+# current shell
+export PATH="$HOME/.local/bin:$PATH"
 
-Windows launcher location:
+# persist for bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 
-```text
-%LOCALAPPDATA%\Microsoft\WindowsApps\mdz.cmd
+# persist for zsh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 ```
 
 After install, run:
@@ -75,6 +76,7 @@ Creates a `.mdz` archive from all files in a source directory.
 ```bash
 mdz create ./my-doc-folder my-doc.mdz --title "My Document" --author "Jane Smith" --entry-point index.md
 mdz create --source ./my-doc-folder --output my-doc.mdz --force
+mdz create ./my-doc-folder my-doc.mdz --create-index
 ```
 
 | Option | Short | Description |
@@ -82,6 +84,7 @@ mdz create --source ./my-doc-folder --output my-doc.mdz --force
 | `--source` | `-s` | Source directory (alternative to positional `<source>`) |
 | `--output` | `-o` | Output archive path (alternative to positional `<output>`) |
 | `--force` | `-f` | Overwrite output file if it already exists |
+| `--create-index` | | Auto-generate `index.md` when no unambiguous entry point can be resolved |
 | `--title` | `-t` | Document title (writes `manifest.json`) |
 | `--entry-point` | `-e` | Relative path to the primary Markdown file |
 | `--language` | `-l` | BCP 47 language tag (e.g. `en`, `fr-CA`) |

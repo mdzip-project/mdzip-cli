@@ -50,6 +50,20 @@ public static class MdzArchive
             throw new ArgumentException($"Source directory '{sourceDirectory}' does not exist.", nameof(sourceDirectory));
 
         var allFiles = Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories).ToList();
+        var archivePaths = new List<string>();
+
+        foreach (var filePath in allFiles)
+        {
+            var relativePath = Path.GetRelativePath(sourceDirectory, filePath)
+                .Replace(Path.DirectorySeparatorChar, '/');
+
+            if (manifest is not null && relativePath.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            archivePaths.Add(relativePath);
+        }
+
+        EnsureCreatableEntryPoint(archivePaths, manifest);
 
         using var archive = ZipFile.Open(outputPath, ZipArchiveMode.Create);
 
@@ -111,9 +125,17 @@ public static class MdzArchive
         IEnumerable<(string ArchivePath, string LocalPath)> files,
         Manifest? manifest = null)
     {
+        var fileList = files.ToList();
+        var archivePaths = fileList
+            .Select(f => f.ArchivePath.Replace(Path.DirectorySeparatorChar, '/'))
+            .Where(path => !(manifest is not null && path.Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        EnsureCreatableEntryPoint(archivePaths, manifest);
+
         using var archive = ZipFile.Open(outputPath, ZipArchiveMode.Create);
 
-        foreach (var (archivePath, localPath) in files)
+        foreach (var (archivePath, localPath) in fileList)
         {
             var normalised = archivePath.Replace(Path.DirectorySeparatorChar, '/');
 
@@ -441,6 +463,45 @@ public static class MdzArchive
         var ext = Path.GetExtension(path).ToLowerInvariant();
         return ext is ".md" or ".markdown" or ".json" or ".txt" or ".css" or ".html" or ".htm"
             or ".xml" or ".svg" or ".yaml" or ".yml" or ".toml";
+    }
+
+    private static void EnsureCreatableEntryPoint(IReadOnlyList<string> archivePaths, Manifest? manifest)
+    {
+        if (manifest?.EntryPoint is { Length: > 0 } entryPoint
+            && !archivePaths.Any(path => path.Equals(entryPoint, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"Manifest entryPoint '{entryPoint}' does not exist in the source content.");
+        }
+
+        if (ResolveEntryPoint(archivePaths, manifest) is null)
+        {
+            throw new InvalidOperationException(
+                "No unambiguous entry point could be determined. Add index.md at the archive root, keep exactly one root Markdown file, or set --entry-point.");
+        }
+    }
+
+    private static string? ResolveEntryPoint(IReadOnlyList<string> archivePaths, Manifest? manifest = null)
+    {
+        if (manifest?.EntryPoint is { Length: > 0 } ep
+            && archivePaths.Any(path => path.Equals(ep, StringComparison.OrdinalIgnoreCase)))
+        {
+            return ep;
+        }
+
+        if (archivePaths.Any(path => path.Equals("index.md", StringComparison.OrdinalIgnoreCase)))
+            return "index.md";
+
+        var rootMarkdown = archivePaths
+            .Where(path => !path.Contains('/'))
+            .Where(path => path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (rootMarkdown.Count == 1)
+            return rootMarkdown[0];
+
+        return null;
     }
 
     private static bool TryParseSemVerMajor(string version, out int major)
