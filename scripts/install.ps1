@@ -19,11 +19,26 @@ $headers = @{}
 if ($GitHubToken) {
     $headers["Authorization"] = "Bearer $GitHubToken"
 }
+$headers["Accept"] = "application/vnd.github+json"
+$headers["User-Agent"] = "mdz-cli-installer"
 
 if (-not $Version) {
     $latestUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases/latest"
-    $latest = Invoke-RestMethod -Uri $latestUrl -Headers $headers
+    try {
+        $latest = Invoke-RestMethod -Uri $latestUrl -Headers $headers
+    }
+    catch {
+        throw "Failed to query latest GitHub release from '$latestUrl'. Set MDZ_VERSION explicitly (for example: v1.0.0). Details: $($_.Exception.Message)"
+    }
+
+    if ($null -eq $latest) {
+        throw "GitHub release API returned no data. Set MDZ_VERSION explicitly (for example: v1.0.0)."
+    }
+
     $Version = $latest.tag_name
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        throw "GitHub release API did not include a tag_name. Set MDZ_VERSION explicitly (for example: v1.0.0)."
+    }
 }
 
 if (-not $Version) {

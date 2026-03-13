@@ -79,6 +79,12 @@ public sealed class Manifest
     /// </summary>
     [JsonPropertyName("cover")]
     public string? Cover { get; set; }
+
+    /// <summary>
+    /// Optional per-file mapping data used to preserve original source names.
+    /// </summary>
+    [JsonPropertyName("files")]
+    public List<ManifestFile>? Files { get; set; }
 }
 
 /// <summary>
@@ -91,4 +97,28 @@ public sealed class Author
 
     [JsonPropertyName("email")]
     public string? Email { get; set; }
+}
+
+/// <summary>
+/// Represents file mapping metadata for a content file.
+/// </summary>
+public sealed class ManifestFile
+{
+    /// <summary>
+    /// Archive-relative path used inside the .mdz archive.
+    /// </summary>
+    [JsonPropertyName("path")]
+    public string? Path { get; set; }
+
+    /// <summary>
+    /// Original source-relative path before sanitization.
+    /// </summary>
+    [JsonPropertyName("originalPath")]
+    public string? OriginalPath { get; set; }
+
+    /// <summary>
+    /// Optional display title, primarily for markdown content.
+    /// </summary>
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
 }

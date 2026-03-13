@@ -48,7 +48,7 @@ internal static class HelpPrinter
 
             if (command.Name.Equals("create", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("    * = Manifest metadata option. Passing any * option writes manifest.json.");
+                Console.WriteLine("    * = Manifest-writing option. Passing any * option writes manifest.json.");
             }
         }
     }
@@ -62,8 +62,10 @@ internal static class HelpPrinter
         {
             "--source",
             "--output",
+            "--filter",
             "--force",
             "--create-index",
+            "--map-files",
             "--title",
             "--entry-point",
             "--language",
