@@ -10,10 +10,12 @@ var rawVersion = Assembly.GetEntryAssembly()?
 var version = rawVersion.Split('+')[0];
 
 var rootCommand = new RootCommand(
-    $"mdz - command-line tool for creating, extracting, validating, and inspecting .mdz files. (v{version}) " +
+    $"mdz - command-line tool for creating, extracting, validating, inspecting, and editing .mdz files. (v{version}) " +
     "Use 'mdz <command> --help' for command-specific options.")
 {
     CreateCommand.Build(),
+    AddCommand.Build(),
+    RemoveCommand.Build(),
     ExtractCommand.Build(),
     ValidateCommand.Build(),
     LsCommand.Build(),

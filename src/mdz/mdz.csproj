@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mdz-core" Version="0.1.1" />
+    <PackageReference Include="mdz-core" Version="1.0.1-draft" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 

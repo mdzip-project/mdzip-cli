@@ -16,7 +16,9 @@ public static class ValidateCommand
             name: "archive",
             description: "Path to the .mdz file to validate.");
 
-        var cmd = new Command("validate", "Validate a .mdz archive against the specification.")
+        var cmd = new Command(
+            "validate",
+            "Validate a .mdz archive against the specification.\n\nExample:\n  mdz validate my-doc.mdz")
         {
             archiveArg,
         };

@@ -16,7 +16,9 @@ public static class InspectCommand
             name: "archive",
             description: "Path to the .mdz file to inspect.");
 
-        var cmd = new Command("inspect", "Inspect metadata and manifest information of a .mdz archive.")
+        var cmd = new Command(
+            "inspect",
+            "Inspect metadata and manifest information of a .mdz archive.\n\nExample:\n  mdz inspect my-doc.mdz")
         {
             archiveArg,
         };
@@ -56,7 +58,7 @@ public static class InspectCommand
             else
             {
                 Console.WriteLine("Manifest:");
-                PrintField("  Spec version (mdz)", manifest.Mdz);
+                PrintField("  Spec version (spec.version)", manifest.Spec?.Version ?? manifest.LegacyMdz);
                 PrintField("  Title", manifest.Title);
                 PrintField("  Entry point", manifest.EntryPoint);
                 PrintField("  Language", manifest.Language);
@@ -67,15 +69,27 @@ public static class InspectCommand
                 PrintField("  Modified", manifest.Modified);
                 PrintField("  Cover", manifest.Cover);
 
-                if (manifest.Authors is { Count: > 0 })
+                if (manifest.Author is not null || manifest.Authors is { Count: > 0 })
                 {
-                    Console.WriteLine("  Authors:");
-                    foreach (var a in manifest.Authors)
+                    Console.WriteLine("  Author(s):");
+
+                    if (manifest.Author is not null)
                     {
-                        var display = a.Name ?? "(unnamed)";
-                        if (a.Email is not null)
-                            display += $" <{a.Email}>";
+                        var display = manifest.Author.Name ?? "(unnamed)";
+                        if (manifest.Author.Email is not null)
+                            display += $" <{manifest.Author.Email}>";
                         Console.WriteLine($"    - {display}");
+                    }
+
+                    if (manifest.Authors is { Count: > 0 })
+                    {
+                        foreach (var a in manifest.Authors)
+                        {
+                            var display = a.Name ?? "(unnamed)";
+                            if (a.Email is not null)
+                                display += $" <{a.Email}>";
+                            Console.WriteLine($"    - {display}");
+                        }
                     }
                 }
 
@@ -89,7 +103,7 @@ public static class InspectCommand
             if (entryPoint is not null)
                 Console.WriteLine($"Resolved entry point: {entryPoint}");
             else
-                Console.WriteLine("Resolved entry point: (none — no unambiguous entry point found)");
+                Console.WriteLine("Resolved entry point: (none - no unambiguous entry point found)");
 
             var entries = MdzArchive.List(archivePath);
             Console.WriteLine($"Total files: {entries.Count}");

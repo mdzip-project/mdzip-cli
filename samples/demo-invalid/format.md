@@ -4,27 +4,27 @@
 
 ## This archive's structure
 
-The demo you're reading right now is an `.mdz` file. Here are its actual contents — the links below are internal navigation within the archive:
+The demo you're reading right now is an `.mdz` file. Here are its actual contents:
 
-- [index.md](index.md) — entry point, overview page
-- [format.md](format.md) — this page
-- [faq.md](faq.md) — frequently asked questions
-- [tools.md](tools.md) — tools and ecosystem
-- [assets/overview.svg](assets/overview.svg) — archive diagram (an SVG image)
-- `manifest.json` — metadata (click it in the sidebar)
+- [index.md](index.md) - entry point, overview page
+- [format.md](format.md) - this page
+- [faq.md](faq.md) - frequently asked questions
+- [tools.md](tools.md) - tools and ecosystem
+- [assets/overview.svg](assets/overview.svg) - archive diagram (an SVG image)
+- `manifest.json` - metadata
 
 A real-world archive might look like this:
 
-```
+```text
 my-document.mdz
-├── manifest.json        ← optional, but recommended
-├── index.md             ← entry point
-├── chapter-2.md
-├── appendix.md
-└── assets/
-    ├── overview.svg
-    ├── diagram.png
-    └── screenshot.jpg
+|- manifest.json        <- optional, but recommended
+|- index.md             <- entry point
+|- chapter-2.md
+|- appendix.md
+`- assets/
+   |- overview.svg
+   |- diagram.png
+   `- screenshot.jpg
 ```
 
 ## Entry point discovery
@@ -40,19 +40,22 @@ When a viewer opens an `.mdz`, it finds the primary document using this algorith
 
 ## The manifest
 
-`manifest.json` is optional but enables richer tooling. All fields except `mdz` and `title` are optional.
+`manifest.json` is optional but enables richer tooling. All fields are optional, but `spec.version` and `title` are recommended.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `mdz` | string | ✅ | Spec version, e.g. `"1.0.0-draft"` |
-| `title` | string | ✅ | Human-readable document title |
-| `description` | string | — | Short summary |
-| `authors` | string[] | — | Author names |
-| `keywords` | string[] | — | Tags for indexing |
-| `license` | string | — | SPDX license identifier |
-| `entryPoint` | string | — | Path to the primary Markdown file |
-| `created` | string | — | ISO 8601 date |
-| `modified` | string | — | ISO 8601 date |
+| `spec` | object | - | Spec metadata object (`name`, `version`) |
+| `title` | string | - | Human-readable document title |
+| `description` | string | - | Short summary |
+| `author` | object | - | Primary author (`name`, `email`, `url`) |
+| `producer` | object | - | Producing tool metadata (`application`, `core`) |
+| `keywords` | string[] | - | Tags for indexing |
+| `license` | string | - | SPDX license identifier or URL |
+| `entryPoint` | string | - | Path to the primary Markdown file |
+| `created` | string or object | - | ISO 8601 timestamp or object with `when` |
+| `modified` | string or object | - | ISO 8601 timestamp or object with `when` |
+| `cover` | string | - | Path to a cover image within the archive |
+| `files` | object[] | - | Optional source-file mapping metadata |
 
 ## Path rules
 
@@ -65,7 +68,7 @@ All file paths inside an `.mdz` must:
 
 ## Error codes
 
-Implementations should use these standardised error identifiers:
+Implementations should use these standardized error identifiers:
 
 | Code | Meaning |
 |------|---------|
@@ -75,4 +78,4 @@ Implementations should use these standardised error identifiers:
 | `ERR_MANIFEST_INVALID` | `manifest.json` is malformed |
 | `ERR_ENTRYPOINT_UNRESOLVED` | No unambiguous entry point found |
 | `ERR_ENTRYPOINT_MISSING` | `entryPoint` references a non-existent file |
-| `ERR_VERSION_UNSUPPORTED` | `manifest.mdz` major version not supported |
+| `ERR_VERSION_UNSUPPORTED` | `manifest.spec.version` major version not supported |

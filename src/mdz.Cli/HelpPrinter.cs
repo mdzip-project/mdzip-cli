@@ -4,25 +4,36 @@ namespace Mdz.Cli;
 
 internal static class HelpPrinter
 {
+    private const int MaxLineWidth = 80;
+
     public static void PrintRootHelp(RootCommand root, string version)
     {
         Console.WriteLine("Description:");
-        Console.WriteLine($"  mdz - command-line tool for creating, extracting, validating, and inspecting .mdz files. (v{version})");
+        WriteWrapped(
+            $"  mdz - command-line tool for creating, extracting, validating, " +
+            $"inspecting, and editing .mdz files. (v{version})");
         Console.WriteLine();
 
         Console.WriteLine("Usage:");
         Console.WriteLine("  mdz <command> [options]");
         Console.WriteLine("  mdz create <source> <output> [options]");
+        Console.WriteLine("  mdz add <archive> <entry-path> <file>");
+        Console.WriteLine("  mdz remove <archive> <entry-path>");
         Console.WriteLine("  mdz extract <archive> [options]");
         Console.WriteLine("  mdz validate <archive>");
         Console.WriteLine("  mdz ls <archive> [options]");
         Console.WriteLine("  mdz inspect <archive>");
-        Console.WriteLine("  Note: <archive> is the .mdz file path; '.mdz' extension is optional.");
+        WriteWrapped("  Note: <archive> is the .mdz file path; '.mdz' extension is optional.");
         Console.WriteLine();
 
         Console.WriteLine("Commands:");
         foreach (var command in root.Subcommands)
-            Console.WriteLine($"  {command.Name,-24} {command.Description}");
+        {
+            var summary = GetSummaryLine(command.Description);
+            WriteWrappedWithPrefix(
+                $"  {command.Name,-24} ",
+                summary);
+        }
         Console.WriteLine();
 
         Console.WriteLine("Options:");
@@ -43,12 +54,14 @@ internal static class HelpPrinter
             foreach (var option in GetOrderedOptions(command))
             {
                 var aliases = string.Join(", ", option.Aliases.OrderBy(a => a, StringComparer.OrdinalIgnoreCase));
-                Console.WriteLine($"    {aliases,-22} {option.Description}");
+                WriteWrappedWithPrefix(
+                    $"    {aliases,-22} ",
+                    option.Description ?? string.Empty);
             }
 
             if (command.Name.Equals("create", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("    * = Manifest-writing option. Passing any * option writes manifest.json.");
+                WriteWrapped("    * = Manifest-writing option. Passing any * option writes manifest.json (spec/version metadata included).");
             }
         }
     }
@@ -95,5 +108,61 @@ internal static class HelpPrinter
         }
 
         return ordered;
+    }
+
+    private static void WriteWrapped(string text)
+    {
+        var leadingSpaces = 0;
+        while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
+            leadingSpaces++;
+
+        var prefix = leadingSpaces > 0 ? new string(' ', leadingSpaces) : string.Empty;
+        var body = text[leadingSpaces..];
+        WriteWrappedWithPrefix(prefix, body);
+    }
+
+    private static void WriteWrappedWithPrefix(string prefix, string text)
+    {
+        var words = text
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (words.Length == 0)
+        {
+            Console.WriteLine(prefix.TrimEnd());
+            return;
+        }
+
+        var continuationPrefix = new string(' ', prefix.Length);
+        var currentPrefix = prefix;
+        var currentLine = currentPrefix;
+
+        foreach (var word in words)
+        {
+            var separator = currentLine.Length == currentPrefix.Length ? string.Empty : " ";
+            if (currentLine.Length + separator.Length + word.Length > MaxLineWidth)
+            {
+                Console.WriteLine(currentLine.TrimEnd());
+                currentPrefix = continuationPrefix;
+                currentLine = currentPrefix + word;
+                continue;
+            }
+
+            currentLine += separator + word;
+        }
+
+        Console.WriteLine(currentLine.TrimEnd());
+    }
+
+    private static string GetSummaryLine(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return string.Empty;
+
+        var trimmed = description.Trim();
+        var newlineIndex = trimmed.IndexOfAny(['\r', '\n']);
+        if (newlineIndex < 0)
+            return trimmed;
+
+        return trimmed[..newlineIndex].TrimEnd();
     }
 }

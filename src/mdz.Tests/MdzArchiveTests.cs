@@ -65,7 +65,7 @@ public class MdzArchiveTests : IDisposable
     {
         var src = MakeSourceDir(("index.md", "# Test"));
         var archivePath = NewArchivePath();
-        var manifest = new Manifest { Mdz = "1.0.0", Title = "Test Doc", EntryPoint = "index.md" };
+        var manifest = new Manifest { Spec = new ManifestSpec { Version = "1.0.0" }, Title = "Test Doc", EntryPoint = "index.md" };
 
         MdzArchive.Create(archivePath, src, manifest);
 
@@ -120,7 +120,7 @@ public class MdzArchiveTests : IDisposable
     {
         var src = MakeSourceDir(("index.md", "# Hello"));
         var archivePath = NewArchivePath();
-        var manifest = new Manifest { Mdz = "1.0.0", Title = "Doc", EntryPoint = "missing.md" };
+        var manifest = new Manifest { Spec = new ManifestSpec { Version = "1.0.0" }, Title = "Doc", EntryPoint = "missing.md" };
 
         var ex = Assert.Throws<InvalidOperationException>(() => MdzArchive.Create(archivePath, src, manifest));
         Assert.Contains("entryPoint", ex.Message);
@@ -212,13 +212,13 @@ public class MdzArchiveTests : IDisposable
     {
         var src = MakeSourceDir(("index.md", "# Hello"));
         var archivePath = NewArchivePath();
-        var manifest = new Manifest { Mdz = "1.0.0", Title = "My Doc" };
+        var manifest = new Manifest { Spec = new ManifestSpec { Version = "1.0.0" }, Title = "My Doc" };
         MdzArchive.Create(archivePath, src, manifest);
 
         var read = MdzArchive.ReadManifest(archivePath);
 
         Assert.NotNull(read);
-        Assert.Equal("1.0.0", read.Mdz);
+        Assert.Equal("1.0.0", read.Spec?.Version);
         Assert.Equal("My Doc", read.Title);
     }
 
@@ -255,7 +255,7 @@ public class MdzArchiveTests : IDisposable
     {
         var src = MakeSourceDir(("index.md", "# Index"), ("start.md", "# Start"));
         var archivePath = NewArchivePath();
-        var manifest = new Manifest { Mdz = "1.0.0", Title = "Doc", EntryPoint = "start.md" };
+        var manifest = new Manifest { Spec = new ManifestSpec { Version = "1.0.0" }, Title = "Doc", EntryPoint = "start.md" };
         MdzArchive.Create(archivePath, src, manifest);
 
         var entryPoint = MdzArchive.ResolveEntryPoint(archivePath);
@@ -303,7 +303,7 @@ public class MdzArchiveTests : IDisposable
     {
         var src = MakeSourceDir(("index.md", "# Hello"));
         var archivePath = NewArchivePath();
-        var manifest = new Manifest { Mdz = "1.0.0", Title = "Test", EntryPoint = "index.md" };
+        var manifest = new Manifest { Spec = new ManifestSpec { Version = "1.0.0" }, Title = "Test", EntryPoint = "index.md" };
         MdzArchive.Create(archivePath, src, manifest);
 
         var result = MdzArchive.Validate(archivePath);
@@ -313,12 +313,12 @@ public class MdzArchiveTests : IDisposable
     }
 
     [Fact]
-    public void Validate_ManifestMissingMdzField_IsInvalid()
+    public void Validate_ManifestMissingSpecVersion_IsValidWithWarning()
     {
         var src = MakeSourceDir(("index.md", "# Hello"));
         var archivePath = NewArchivePath();
 
-        // Write a manifest manually without the mdz field
+        // Write a manifest manually without the spec.version field
         using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
         {
             var idxEntry = zip.CreateEntry("index.md");
@@ -331,8 +331,8 @@ public class MdzArchiveTests : IDisposable
 
         var result = MdzArchive.Validate(archivePath);
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Contains("ERR_MANIFEST_INVALID") && e.Contains("mdz"));
+        Assert.True(result.IsValid);
+        Assert.Contains(result.Warnings, w => w.Contains("spec.version", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -348,7 +348,7 @@ public class MdzArchiveTests : IDisposable
 
             var mEntry = zip.CreateEntry("manifest.json");
             using var ms = mEntry.Open();
-            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { mdz = "1.0.0" })));
+            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { spec = new { version = "1.0.0" } })));
         }
 
         var result = MdzArchive.Validate(archivePath);
@@ -369,7 +369,7 @@ public class MdzArchiveTests : IDisposable
 
             var mEntry = zip.CreateEntry("manifest.json");
             using var ms = mEntry.Open();
-            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { mdz = "1.0.0", title = "Doc", entryPoint = "nonexistent.md" })));
+            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { spec = new { version = "1.0.0" }, title = "Doc", entryPoint = "nonexistent.md" })));
         }
 
         var result = MdzArchive.Validate(archivePath);
@@ -390,7 +390,7 @@ public class MdzArchiveTests : IDisposable
 
             var mEntry = zip.CreateEntry("manifest.json");
             using var ms = mEntry.Open();
-            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { mdz = "9.0.0", title = "Doc" })));
+            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { spec = new { version = "9.0.0" }, title = "Doc" })));
         }
 
         var result = MdzArchive.Validate(archivePath);
@@ -400,7 +400,7 @@ public class MdzArchiveTests : IDisposable
     }
 
     [Fact]
-    public void Validate_MdzVersionNotSemVer_IsInvalid()
+    public void Validate_SpecVersionNotSemVer_IsInvalid()
     {
         var archivePath = NewArchivePath();
 
@@ -411,7 +411,7 @@ public class MdzArchiveTests : IDisposable
 
             var mEntry = zip.CreateEntry("manifest.json");
             using var ms = mEntry.Open();
-            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { mdz = "1", title = "Doc" })));
+            ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { spec = new { version = "1" }, title = "Doc" })));
         }
 
         var result = MdzArchive.Validate(archivePath);
@@ -421,7 +421,7 @@ public class MdzArchiveTests : IDisposable
     }
 
     [Fact]
-    public void Validate_MdzVersionSemVerPrereleaseWithBuild_IsValid()
+    public void Validate_SpecVersionSemVerPrereleaseWithBuild_IsValid()
     {
         var archivePath = NewArchivePath();
 
@@ -434,7 +434,7 @@ public class MdzArchiveTests : IDisposable
             using var ms = mEntry.Open();
             ms.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
             {
-                mdz = "1.0.0-alpha.1+exp.sha.5114f85",
+                spec = new { version = "1.0.0-alpha.1+exp.sha.5114f85" },
                 title = "Doc"
             })));
         }

@@ -70,7 +70,8 @@ The spec doesn't mandate a specific Markdown variant. Authors should stick to Co
 
 ## Is the spec stable?
 
-The current version is `1.0.0-draft`. The core structure is stable but the spec is still in draft while tooling is being developed. The `mdz` field in `manifest.json` carries the version, so tools can detect and adapt to future changes.
+The current draft version is `1.0.1-draft`. The spec version is carried in `manifest.json` at `spec.version`, so tools can detect and adapt to future changes.
 
 Read the full specification at [github.com/kylemwhite/markdownzip-spec](https://github.com/kylemwhite/markdownzip-spec).
+
 

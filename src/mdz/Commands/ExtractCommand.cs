@@ -24,7 +24,9 @@ public static class ExtractCommand
             aliases: ["--allow-invalid"],
             description: "Extract even if the archive fails validation checks.");
 
-        var cmd = new Command("extract", "Extract the contents of a .mdz archive.")
+        var cmd = new Command(
+            "extract",
+            "Extract the contents of a .mdz archive.\n\nExample:\n  mdz extract my-doc.mdz --output ./extracted")
         {
             archiveArg,
             outputOption,

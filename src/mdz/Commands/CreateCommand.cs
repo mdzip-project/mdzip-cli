@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Text;
 using Mdz.Core;
 using Mdz.Models;
@@ -53,33 +54,35 @@ public static class CreateCommand
 
         var mapFilesOption = new Option<bool>(
             aliases: ["--map-files", "-mf"],
-            description: "* Write/update manifest.json with a markdown file map (path, originalPath, title). Sanitizes invalid source paths if needed.");
+            description: "* Write/update manifest.json files[] mapping (path, originalPath, title). Sanitizes invalid source paths if needed.");
 
         var titleOption = new Option<string?>(
             aliases: ["--title", "-t"],
-            description: "* Document title to include in manifest.json.");
+            description: "* Document title for manifest.title.");
 
         var entryPointOption = new Option<string?>(
             aliases: ["--entry-point", "-e"],
-            description: "* Relative path to the entry-point Markdown file within the archive.");
+            description: "* Relative path for manifest.entryPoint.");
 
         var languageOption = new Option<string?>(
             aliases: ["--language", "-l"],
-            description: "* BCP 47 language tag for the document (e.g. 'en', 'fr-CA'). Defaults to 'en'.");
+            description: "* BCP 47 language tag for manifest.language (e.g. 'en', 'fr-CA'). Defaults to 'en'.");
 
         var authorOption = new Option<string?>(
             aliases: ["--author", "-a"],
-            description: "* Author name.");
+            description: "* Primary author name for manifest.author.name.");
 
         var descriptionOption = new Option<string?>(
             aliases: ["--description", "-d"],
-            description: "* Short description of the document.");
+            description: "* Short description for manifest.description.");
 
         var versionOption = new Option<string?>(
             aliases: ["--doc-version"],
-            description: "* Version of the document itself (e.g. '1.0.0').");
+            description: "* Document version for manifest.version (e.g. '1.0.0').");
 
-        var cmd = new Command("create", "Create an .mdz archive from a source directory.")
+        var cmd = new Command(
+            "create",
+            "Create an .mdz archive from a source directory.\n\nExample:\n  mdz create ./my-doc-folder my-doc.mdz --title \"My Document\"")
         {
             sourceArg,
             outputArg,
@@ -200,13 +203,14 @@ public static class CreateCommand
 
             manifest = new Manifest
             {
-                Mdz = "1.0.0",
+                Spec = new ManifestSpec { Name = "markdownzip-spec", Version = "1.0.1-draft" },
+                Producer = BuildProducerMetadata(),
                 Title = effectiveTitle,
                 EntryPoint = entryPoint,
                 Language = language ?? "en",
                 Description = description,
                 Version = docVersion,
-                Authors = author is not null ? [new Author { Name = author }] : null,
+                Author = author is not null ? new ManifestAuthor { Name = author } : null,
             };
         }
 
@@ -679,10 +683,45 @@ public static class CreateCommand
 
         manifest = new Manifest
         {
-            Mdz = "1.0.0",
+            Spec = new ManifestSpec { Name = "markdownzip-spec", Version = "1.0.1-draft" },
+            Producer = BuildProducerMetadata(),
             Title = effectiveTitle,
             Language = "en",
         };
+    }
+
+    private static ManifestProducer BuildProducerMetadata()
+    {
+        var appAssembly = Assembly.GetEntryAssembly() ?? typeof(CreateCommand).Assembly;
+        var appVersion = GetInformationalVersion(appAssembly);
+        var coreVersion = GetInformationalVersion(typeof(MdzArchive).Assembly);
+
+        return new ManifestProducer
+        {
+            Application = new ManifestAgent
+            {
+                Name = "mdz-cli",
+                Version = appVersion,
+                Url = "https://github.com/kylemwhite/mdz-cli",
+            },
+            Core = new ManifestAgent
+            {
+                Name = "mdz-core",
+                Version = coreVersion,
+                Url = "https://github.com/kylemwhite/mdz-core",
+            },
+        };
+    }
+
+    private static string? GetInformationalVersion(Assembly assembly)
+    {
+        var informational = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(informational))
+            return informational.Split('+')[0];
+
+        return assembly.GetName().Version?.ToString();
     }
 
     private static string SanitiseArchivePath(string path)

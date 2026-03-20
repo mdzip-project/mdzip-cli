@@ -8,7 +8,27 @@ $GitHubToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { $null }
 $InstallRoot = if ($env:INSTALL_ROOT) { $env:INSTALL_ROOT } else { Join-Path $env:LOCALAPPDATA "mdz-cli" }
 $BinDir = if ($env:BIN_DIR) { $env:BIN_DIR } else { Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps" }
 
-$arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+$arch = $null
+try {
+    $runtimeArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ($null -ne $runtimeArch) {
+        $arch = $runtimeArch.ToString().ToLowerInvariant()
+    }
+}
+catch {
+    # Fall back to processor environment variables below.
+}
+
+if ([string]::IsNullOrWhiteSpace($arch)) {
+    $procArch = "$($env:PROCESSOR_ARCHITEW6432) $($env:PROCESSOR_ARCHITECTURE)".ToUpperInvariant()
+    if ($procArch -match "ARM64") {
+        $arch = "arm64"
+    }
+    elseif ($procArch -match "AMD64|X64") {
+        $arch = "x64"
+    }
+}
+
 $rid = switch ($arch) {
     "x64" { "win-x64" }
     "arm64" { "win-arm64" }
@@ -55,7 +75,7 @@ try {
     $zipPath = Join-Path $TempRoot "mdz.zip"
 
     Write-Host "Installing $RepoOwner/$RepoName $Version ($rid)..."
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -Headers $headers
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -Headers $headers -ErrorAction Stop
 
     if (Test-Path $InstallRoot) {
         Remove-Item -Recurse -Force $InstallRoot

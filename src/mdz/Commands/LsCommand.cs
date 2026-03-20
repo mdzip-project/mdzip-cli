@@ -20,7 +20,9 @@ public static class LsCommand
             aliases: ["--long", "-l"],
             description: "Show detailed information (size, compressed size, last modified).");
 
-        var cmd = new Command("ls", "List the contents of a .mdz archive.")
+        var cmd = new Command(
+            "ls",
+            "List the contents of a .mdz archive.\n\nExample:\n  mdz ls my-doc.mdz --long")
         {
             archiveArg,
             longOption,
