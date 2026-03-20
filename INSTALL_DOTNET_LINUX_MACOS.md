@@ -1,6 +1,6 @@
-# Install .NET 10 on Linux and macOS
+# Install .NET 8 on Linux and macOS
 
-This page is for building `mdz` from source. You need the .NET 10 SDK for development and local builds.
+This page is for building `mdz` from source. You need the .NET 8 SDK for development and local builds.
 If you install from prebuilt release binaries, you do not need to install .NET.
 
 ## Official Microsoft docs
@@ -20,13 +20,13 @@ dotnet --info
 dotnet --version
 ```
 
-You should see an SDK version starting with `10.`.
+You should see an SDK version starting with `8.`.
 
 ## macOS
 
 Option 1 (recommended): install from Microsoft official installer pages:
 
-- https://dotnet.microsoft.com/download/dotnet/10.0
+- https://dotnet.microsoft.com/download/dotnet/8.0
 
 Choose the SDK for your architecture:
 
