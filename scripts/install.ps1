@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $RepoOwner = if ($env:REPO_OWNER) { $env:REPO_OWNER } else { "mdzip-project" }
-$RepoName = if ($env:REPO_NAME) { $env:REPO_NAME } else { "mdz-cli" }
+$RepoName = if ($env:REPO_NAME) { $env:REPO_NAME } else { "mdzip-cli" }
 $Version = if ($env:MDZ_VERSION) { $env:MDZ_VERSION } else { $null }
 $GitHubToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { $null }
 

@@ -702,7 +702,7 @@ public static class CreateCommand
             {
                 Name = "mdz-cli",
                 Version = appVersion,
-                Url = "https://github.com/mdzip-project/mdz-cli",
+                Url = "https://github.com/mdzip-project/mdzip-cli",
             },
             Core = new ManifestAgent
             {
