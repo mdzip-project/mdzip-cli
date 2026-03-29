@@ -16,7 +16,7 @@ if ! command -v uname >/dev/null 2>&1; then
   exit 1
 fi
 
-REPO_OWNER="${REPO_OWNER:-kylemwhite}"
+REPO_OWNER="${REPO_OWNER:-mdzip-project}"
 REPO_NAME="${REPO_NAME:-mdz-cli}"
 MDZ_VERSION="${MDZ_VERSION:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"

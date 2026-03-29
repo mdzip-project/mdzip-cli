@@ -54,4 +54,4 @@ Compress-Archive -Path index.md, assets, manifest.json -DestinationPath my-docum
 Rename-Item my-document.zip my-document.mdz
 ```
 
-See the [Use Today](https://markdownzip.org/today.html) page for more options.
+See the [Use Today](https://mdzip.org/today.html) page for more options.

@@ -127,7 +127,7 @@ public sealed class SpecFixtureTests : IDisposable
             AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 
         var siblingSpecRepo = Path.GetFullPath(Path.Combine(
-            repoRoot, "..", "markdownzip-spec", "examples", "fixtures"));
+            repoRoot, "..", "mdzip-spec", "examples", "fixtures"));
         if (Directory.Exists(siblingSpecRepo))
             return siblingSpecRepo;
 

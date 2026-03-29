@@ -72,6 +72,6 @@ The spec doesn't mandate a specific Markdown variant. Authors should stick to Co
 
 The current draft version is `1.0.1-draft`. The spec version is carried in `manifest.json` at `spec.version`, so tools can detect and adapt to future changes.
 
-Read the full specification at [github.com/kylemwhite/markdownzip-spec](https://github.com/kylemwhite/markdownzip-spec).
+Read the full specification at [github.com/mdzip-project/mdzip-spec](https://github.com/mdzip-project/mdzip-spec).
 
 

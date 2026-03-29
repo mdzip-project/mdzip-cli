@@ -122,7 +122,7 @@ public static class LsCommand
         {
             var child = children[i];
             var isLast = i == children.Count - 1;
-            var branch = isLast ? "`-- " : "|-- ";
+            var branch = isLast ? "\\-- " : "|-- ";
             var suffix = child.IsDirectory ? "/" : string.Empty;
             Console.WriteLine($"{prefix}{branch}{child.Name}{suffix}");
 

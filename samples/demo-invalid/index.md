@@ -1,6 +1,6 @@
 # Getting Started with .mdz
 
-Welcome to this demo `.mdz` file. You're reading it right now in the markdownzip.org browser viewer — a static HTML page that opened this archive entirely in your browser. Nothing was uploaded anywhere.
+Welcome to this demo `.mdz` file. You're reading it right now in the mdzip.org browser viewer — a static HTML page that opened this archive entirely in your browser. Nothing was uploaded anywhere.
 
 ![Overview diagram](assets/overview.svg)
 
