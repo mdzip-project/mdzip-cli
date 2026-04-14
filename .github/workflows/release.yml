@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  packages: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -48,9 +47,6 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
-          source-url: https://nuget.pkg.github.com/mdzip-project/index.json
-        env:
-          NUGET_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Determine release tag
         id: tag
