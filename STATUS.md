@@ -1,5 +1,5 @@
-Status: ready-to-commit
-Last: Verified CLI against published mdzip-core 1.3.0
+Status: idle
+Last: Committed CLI parity, mdz.exe publish, WinGet, and core 1.3.0 updates
 
 <!-- Dashboard reads these two lines.
      Status: idle | in-progress | awaiting-test | ready-to-commit | blocked
