@@ -1,5 +1,5 @@
-Status: idle
-Last: Committed net10 + v1.2.0; core ref pinned to published 1.1.0 until core 1.2.0 ships
+Status: ready-to-commit
+Last: Verified CLI against published mdzip-core 1.3.0
 
 <!-- Dashboard reads these two lines.
      Status: idle | in-progress | awaiting-test | ready-to-commit | blocked

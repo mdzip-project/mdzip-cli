@@ -82,10 +82,14 @@ try {
     }
     New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
     Expand-Archive -Path $zipPath -DestinationPath $InstallRoot -Force
+    $installedExe = Join-Path $InstallRoot "mdz.exe"
+    if (-not (Test-Path $installedExe)) {
+        throw "Release asset '$assetName' did not contain expected executable 'mdz.exe'."
+    }
 
     New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
     $cmdPath = Join-Path $BinDir "mdz.cmd"
-    Set-Content -Path $cmdPath -NoNewline -Value "@echo off`r`n""$InstallRoot\mdz.exe"" %*`r`n"
+    Set-Content -Path $cmdPath -NoNewline -Value "@echo off`r`n""$installedExe"" %*`r`n"
 
     Write-Host "Installed files: $InstallRoot"
     Write-Host "Launcher: $cmdPath"

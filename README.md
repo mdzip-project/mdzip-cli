@@ -12,6 +12,12 @@ Although the CLI is built with C#, binaries are distributed as prebuilt release 
 
 ### One-line install
 
+**Windows** (WinGet, once the package is accepted):
+
+```powershell
+winget install MDZipProject.mdz
+```
+
 **Windows** (PowerShell, will put `mdz.cmd` in `%LOCALAPPDATA%\Microsoft\WindowsApps`):
 
 ```powershell
@@ -275,6 +281,8 @@ dotnet run --project src/mdz.Cli/mdz.Cli.csproj -- --help
 dotnet restore .\mdz-cli.slnx --configfile .\NuGet.Config
 dotnet publish src/mdz.Cli/mdz.Cli.csproj -c Release -r win-x64 --self-contained true --no-restore -p:DebugType=None -p:DebugSymbols=false -o out/win-x64
 
-# Or use the helper script (restores + publishes + renames to mdz.exe/mdz)
+# Or use the helper script (restores + verifies the mdz.exe/mdz output)
 powershell -ExecutionPolicy Bypass -File .\scripts\publish-single.ps1 -Rid win-x64 -ConfigFile .\NuGet.Config
 ```
+
+WinGet release automation is documented in [docs/winget.md](docs/winget.md).

@@ -43,6 +43,9 @@ public static class ValidateCommand
 
         var result = MdzArchive.Validate(archivePath);
         var archiveName = Path.GetFileName(archivePath);
+        var status = MdzArchive.GetValidationStatus(result);
+
+        Console.WriteLine($"Status: {status}");
 
         foreach (var warning in result.Warnings)
             Console.WriteLine($"  Warning: {warning}");

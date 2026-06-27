@@ -77,9 +77,7 @@ jobs:
         if: matrix.ext == 'tar.gz'
         shell: bash
         run: |
-          if [ -f "out/${{ matrix.rid }}/mdz.Cli" ]; then
-            mv "out/${{ matrix.rid }}/mdz.Cli" "out/${{ matrix.rid }}/mdz"
-          fi
+          test -f "out/${{ matrix.rid }}/mdz"
           mkdir -p dist
           tar -czf "dist/mdz-${{ steps.tag.outputs.tag }}-${{ matrix.rid }}.tar.gz" -C "out/${{ matrix.rid }}" .
 
@@ -87,8 +85,8 @@ jobs:
         if: matrix.ext == 'zip'
         shell: pwsh
         run: |
-          if (Test-Path "out/${{ matrix.rid }}/mdz.Cli.exe") {
-            Rename-Item -Path "out/${{ matrix.rid }}/mdz.Cli.exe" -NewName "mdz.exe"
+          if (-not (Test-Path "out/${{ matrix.rid }}/mdz.exe")) {
+            throw "Expected out/${{ matrix.rid }}/mdz.exe"
           }
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           Compress-Archive -Path "out/${{ matrix.rid }}/*" -DestinationPath "dist/mdz-${{ steps.tag.outputs.tag }}-${{ matrix.rid }}.zip" -Force
@@ -115,3 +113,32 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+
+  winget:
+    needs: release
+    runs-on: windows-latest
+    if: github.ref_type == 'tag'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Submit WinGet update
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINGET_TOKEN)) {
+            Write-Host "Skipping WinGet submission because WINGET_TOKEN is not configured."
+            exit 0
+          }
+
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+
+          .\scripts\update-winget.ps1 `
+            -PackageIdentifier "MDZipProject.mdz" `
+            -Version $version `
+            -Tag "${{ github.ref_name }}" `
+            -RepoOwner "${{ github.repository_owner }}" `
+            -RepoName "${{ github.event.repository.name }}" `
+            -Token $env:WINGET_TOKEN `
+            -Submit

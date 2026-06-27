@@ -53,16 +53,10 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed."
 }
 
-$sourceExeName = if ($Rid -like "win-*") { "mdz.Cli.exe" } else { "mdz.Cli" }
-$targetExeName = if ($Rid -like "win-*") { "mdz.exe" } else { "mdz" }
-$sourceExePath = Join-Path $outputDir $sourceExeName
-$targetExePath = Join-Path $outputDir $targetExeName
-
-if (Test-Path $sourceExePath) {
-    if (Test-Path $targetExePath) {
-        Remove-Item $targetExePath -Force
-    }
-    Rename-Item -Path $sourceExePath -NewName $targetExeName
+$expectedExeName = if ($Rid -like "win-*") { "mdz.exe" } else { "mdz" }
+$expectedExePath = Join-Path $outputDir $expectedExeName
+if (-not (Test-Path $expectedExePath)) {
+    throw "Expected published executable '$expectedExeName' was not found in '$outputDir'."
 }
 
 Write-Host "Done. Output: $outputDir"
