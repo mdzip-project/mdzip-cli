@@ -58,6 +58,28 @@ auth_header() {
   fi
 }
 
+# Fetch a GitHub URL, falling back to an unauthenticated request if an ambient
+# GITHUB_TOKEN is present but rejected (expired/invalid). mdzip-cli is a public
+# repo, so a token is never required to install.
+# Usage: gh_get URL [OUTFILE]   (no OUTFILE => body written to stdout)
+gh_get() {
+  _url="$1"
+  _out="${2:-}"
+  if [ -n "$_out" ]; then
+    if [ -n "$GITHUB_TOKEN" ]; then
+      if curl -fL -H "$(auth_header)" "$_url" -o "$_out"; then return 0; fi
+      echo "Warning: GitHub request failed with GITHUB_TOKEN; retrying without authentication (token may be expired/invalid)." >&2
+    fi
+    curl -fL "$_url" -o "$_out"
+  else
+    if [ -n "$GITHUB_TOKEN" ]; then
+      if _body="$(curl -fsSL -H "$(auth_header)" "$_url")"; then printf '%s' "$_body"; return 0; fi
+      echo "Warning: GitHub request failed with GITHUB_TOKEN; retrying without authentication (token may be expired/invalid)." >&2
+    fi
+    curl -fsSL "$_url"
+  fi
+}
+
 TMP_DIR="$(mktemp -d)"
 cleanup() {
   rm -rf "$TMP_DIR"
@@ -66,11 +88,7 @@ trap cleanup EXIT INT TERM
 
 if [ -z "$MDZ_VERSION" ]; then
   API_URL="https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/latest"
-  if [ -n "$GITHUB_TOKEN" ]; then
-    MDZ_VERSION="$(curl -fsSL -H "$(auth_header)" "$API_URL" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
-  else
-    MDZ_VERSION="$(curl -fsSL "$API_URL" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
-  fi
+  MDZ_VERSION="$(gh_get "$API_URL" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
 fi
 
 if [ -z "$MDZ_VERSION" ]; then
@@ -82,11 +100,7 @@ ASSET_NAME="mdz-$MDZ_VERSION-$RID.tar.gz"
 DOWNLOAD_URL="https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/$MDZ_VERSION/$ASSET_NAME"
 
 echo "Installing $REPO_OWNER/$REPO_NAME $MDZ_VERSION ($RID)..."
-if [ -n "$GITHUB_TOKEN" ]; then
-  curl -fL -H "$(auth_header)" "$DOWNLOAD_URL" -o "$TMP_DIR/mdz.tar.gz"
-else
-  curl -fL "$DOWNLOAD_URL" -o "$TMP_DIR/mdz.tar.gz"
-fi
+gh_get "$DOWNLOAD_URL" "$TMP_DIR/mdz.tar.gz"
 
 rm -rf "$INSTALL_ROOT"
 mkdir -p "$INSTALL_ROOT"
