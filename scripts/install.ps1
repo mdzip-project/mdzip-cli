@@ -35,17 +35,47 @@ $rid = switch ($arch) {
     default { throw "Unsupported architecture '$arch'. Supported: x64, arm64." }
 }
 
-$headers = @{}
+$headers = @{
+    "Accept"     = "application/vnd.github+json"
+    "User-Agent" = "mdz-cli-installer"
+}
 if ($GitHubToken) {
     $headers["Authorization"] = "Bearer $GitHubToken"
 }
-$headers["Accept"] = "application/vnd.github+json"
-$headers["User-Agent"] = "mdz-cli-installer"
+
+# Invoke a GitHub request, falling back to an unauthenticated request if an
+# ambient GITHUB_TOKEN is present but rejected (expired/invalid). mdzip-cli is a
+# public repo, so a token is never required to install.
+function Invoke-GitHub {
+    param(
+        [Parameter(Mandatory)] [string] $Uri,
+        [string] $OutFile
+    )
+    $attempt = $headers
+    for ($i = 0; $i -lt 2; $i++) {
+        try {
+            if ($OutFile) {
+                Invoke-WebRequest -Uri $Uri -OutFile $OutFile -Headers $attempt -ErrorAction Stop | Out-Null
+                return
+            }
+            return Invoke-RestMethod -Uri $Uri -Headers $attempt -ErrorAction Stop
+        }
+        catch {
+            $status = $null
+            try { $status = [int]$_.Exception.Response.StatusCode } catch { }
+            $canRetry = ($i -eq 0) -and $attempt.ContainsKey("Authorization") -and ($status -eq 401 -or $status -eq 403)
+            if (-not $canRetry) { throw }
+            Write-Warning "GitHub rejected the request (HTTP $status) using GITHUB_TOKEN; retrying without authentication. Your GITHUB_TOKEN may be expired or invalid."
+            $attempt = @{}
+            foreach ($k in $headers.Keys) { if ($k -ne "Authorization") { $attempt[$k] = $headers[$k] } }
+        }
+    }
+}
 
 if (-not $Version) {
     $latestUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases/latest"
     try {
-        $latest = Invoke-RestMethod -Uri $latestUrl -Headers $headers
+        $latest = Invoke-GitHub -Uri $latestUrl
     }
     catch {
         throw "Failed to query latest GitHub release from '$latestUrl'. Set MDZ_VERSION explicitly (for example: v1.0.0). Details: $($_.Exception.Message)"
@@ -75,7 +105,7 @@ try {
     $zipPath = Join-Path $TempRoot "mdz.zip"
 
     Write-Host "Installing $RepoOwner/$RepoName $Version ($rid)..."
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -Headers $headers -ErrorAction Stop
+    Invoke-GitHub -Uri $downloadUrl -OutFile $zipPath
 
     if (Test-Path $InstallRoot) {
         Remove-Item -Recurse -Force $InstallRoot
