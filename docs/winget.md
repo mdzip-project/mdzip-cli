@@ -1,49 +1,60 @@
 # WinGet Publishing
 
-The CLI is published to `microsoft/winget-pkgs` as:
+The CLI's WinGet manifests are **authored and kept in this repo** under:
 
 ```text
-MDZip.Cli   (moniker: mdz)
+winget/MDZip.Cli/<version>/
+  MDZip.Cli.yaml                 # version manifest
+  MDZip.Cli.installer.yaml       # zip installer + nested portable mdz.exe
+  MDZip.Cli.locale.en-US.yaml    # defaultLocale
 ```
 
-Windows release assets are self-contained zip archives, architecture-qualified
-as `x64` and `arm64`:
+- **PackageIdentifier:** `MDZip.Cli`  **Moniker:** `mdz`
+- Windows assets are self-contained zips (`mdz-vX.Y.Z-win-x64.zip` /
+  `-win-arm64.zip`) each containing a single portable `mdz.exe`, aliased to
+  `mdz` on install.
+- We publish **interactively** — no PAT or repo secret required. The only
+  interactive step is a GitHub sign-in during `wingetcreate submit`.
 
-```text
-mdz-vX.Y.Z-win-x64.zip
-mdz-vX.Y.Z-win-arm64.zip
-```
+## Cutting a release
 
-We publish **interactively** via WingetCreate's GitHub sign-in — no personal
-access token or repo secret is required. See [winget-todo.md](../winget-todo.md)
-for the step-by-step checklist.
+1. Copy the previous version folder:
+   ```powershell
+   cp -r winget/MDZip.Cli/1.3.0 winget/MDZip.Cli/<new>
+   ```
+2. In the new folder, update:
+   - **all three files:** `PackageVersion: <new>`
+   - **installer:** both `InstallerUrl`s (→ `v<new>`) and both `InstallerSha256`s
+   - **locale:** `ReleaseNotesUrl`
 
-## First publish (one time)
+   Compute the hashes (winget wants **uppercase** hex):
+   ```powershell
+   (Get-FileHash <asset>.zip -Algorithm SHA256).Hash      # or: curl -sL <url> | sha256sum
+   ```
+3. Validate locally:
+   ```powershell
+   winget validate --manifest winget/MDZip.Cli/<new>
+   ```
+4. Submit (browser sign-in, no token):
+   ```powershell
+   wingetcreate submit --prtitle "New version: MDZip.Cli <new>" winget/MDZip.Cli/<new>
+   ```
 
-Run after the GitHub release for the tag exists (the helper reads its assets):
+Run after the GitHub release for that tag exists (the URLs/hashes reference its
+assets). The same `wingetcreate submit <folder>` is used for the first publish
+and every update. `ManifestVersion` is `1.12.0` (the current client schema);
+`winget validate` will tell you if a newer client requires a bump.
 
-```powershell
-.\scripts\update-winget.ps1 -Mode New -PackageIdentifier MDZip.Cli -Version 1.3.0 -Tag v1.3.0
-```
+## Quick checklist
 
-Omitting `-Token` triggers WingetCreate's interactive browser sign-in. When
-prompted, use identifier `MDZip.Cli` and moniker `mdz`, then confirm submit to
-open a PR against `microsoft/winget-pkgs`.
+See [winget-todo.md](../winget-todo.md) for the short step list.
 
-## Subsequent releases
+## Alternative paths (not the default)
 
-Once the manifest exists, each tagged release is a one-line interactive update:
+These exist but are **not** needed for the interactive, in-repo flow above:
 
-```powershell
-.\scripts\update-winget.ps1 -Mode Update -PackageIdentifier MDZip.Cli -Version X.Y.Z -Tag vX.Y.Z -Submit
-```
-
-This reuses your cached GitHub sign-in (re-prompts only when it expires).
-
-## Optional: CI automation
-
-If you ever prefer hands-off releases, set a repository secret `WINGET_TOKEN`
-(a GitHub PAT with `public_repo`). The `winget` job in
-`.github/workflows/release.yml` then submits the update on every `v*` tag,
-passing `-Token $env:WINGET_TOKEN -Submit`. Without the secret, that job simply
-skips — which is the default for the interactive workflow above.
+- `scripts/update-winget.ps1` / `wingetcreate new` can *generate* manifests
+  interactively instead of copy-editing the committed set.
+- The `winget` job in `.github/workflows/release.yml` can auto-submit on each
+  `v*` tag **if** a `WINGET_TOKEN` secret (a GitHub PAT with `public_repo`) is
+  configured. Without the secret it safely skips, which is the default here.
