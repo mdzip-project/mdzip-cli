@@ -16,23 +16,29 @@ public static class InspectCommand
             name: "archive",
             description: "Path to the .mdz file to inspect.");
 
+        var treeOption = new Option<bool>(
+            aliases: ["--tree"],
+            description: "Print an inferred archive path tree.");
+
         var cmd = new Command(
             "inspect",
             "Inspect metadata and manifest information of a .mdz archive.\n\nExample:\n  mdz inspect my-doc.mdz")
         {
             archiveArg,
+            treeOption,
         };
 
         cmd.SetHandler((InvocationContext ctx) =>
         {
             var archive = ctx.ParseResult.GetValueForArgument(archiveArg);
-            ctx.ExitCode = Handle(archive!);
+            var tree = ctx.ParseResult.GetValueForOption(treeOption);
+            ctx.ExitCode = Handle(archive!, tree);
         });
 
         return cmd;
     }
 
-    private static int Handle(FileInfo archive)
+    private static int Handle(FileInfo archive, bool tree)
     {
         var archivePath = ArchivePathResolver.ResolveInputArchivePath(archive.FullName);
         if (!File.Exists(archivePath))
@@ -101,6 +107,8 @@ public static class InspectCommand
             Console.WriteLine();
 
             var entryPoint = MdzArchive.ResolveEntryPoint(archivePath);
+            var mode = MdzArchive.ResolveMode(archivePath);
+            Console.WriteLine($"Resolved mode: {mode}");
             if (entryPoint is not null)
                 Console.WriteLine($"Resolved entry point: {entryPoint}");
             else
@@ -108,6 +116,12 @@ public static class InspectCommand
 
             var entries = MdzArchive.List(archivePath);
             Console.WriteLine($"Total files: {entries.Count}");
+            if (tree)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Tree:");
+                PrintTree(MdzArchive.BuildPathTree(archivePath), string.Empty);
+            }
 
             return 0;
         }
@@ -122,5 +136,19 @@ public static class InspectCommand
     {
         if (!string.IsNullOrWhiteSpace(value))
             Console.WriteLine($"{label}: {value}");
+    }
+
+    private static void PrintTree(IReadOnlyList<PathTreeNode> nodes, string prefix)
+    {
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var node = nodes[i];
+            var isLast = i == nodes.Count - 1;
+            var branch = isLast ? "\\-- " : "|-- ";
+            var suffix = node.IsDirectory ? "/" : string.Empty;
+            Console.WriteLine($"{prefix}{branch}{node.Name}{suffix}");
+            if (node.Children.Count > 0)
+                PrintTree(node.Children, prefix + (isLast ? "    " : "|   "));
+        }
     }
 }

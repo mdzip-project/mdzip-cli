@@ -20,6 +20,11 @@ var rootCommand = new RootCommand(
     ValidateCommand.Build(),
     LsCommand.Build(),
     InspectCommand.Build(),
+    CatCommand.Build(),
+    AssetsCommand.Build(),
+    ManifestCommand.Build(),
+    WorkspaceCommand.Build(),
+    InfoCommand.Build(version),
 };
 
 if (args.Length == 0 || IsRootHelpRequest(args))
