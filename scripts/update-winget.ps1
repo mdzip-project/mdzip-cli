@@ -3,7 +3,7 @@ param(
     [ValidateSet("Update", "New")]
     [string] $Mode = "Update",
 
-    [string] $PackageIdentifier = "MDZipProject.mdz",
+    [string] $PackageIdentifier = "MDZip.Cli",
 
     [Parameter(Mandatory = $true)]
     [string] $Version,
@@ -63,9 +63,8 @@ $windowsAssetUrls = @(
     "$assetBaseUrl/mdz-$Tag-win-arm64.zip|arm64"
 )
 
-if ($Mode -eq "Update" -and $Submit -and [string]::IsNullOrWhiteSpace($Token)) {
-    throw "Token is required when -Submit is used."
-}
+# A token is optional: when omitted, WingetCreate uses its stored credential or
+# starts an interactive GitHub sign-in. Pass -Token only for non-interactive/CI use.
 
 if ($Mode -eq "New") {
     Write-Host "Starting interactive WinGet manifest creation for $PackageIdentifier $Version."
@@ -89,9 +88,9 @@ else {
 }
 
 if ($Mode -eq "Update" -and $Submit) {
-    $arguments += @("--submit", "--token", $Token)
+    $arguments += "--submit"
 }
-elseif ($Mode -eq "New" -and -not [string]::IsNullOrWhiteSpace($Token)) {
+if (-not [string]::IsNullOrWhiteSpace($Token)) {
     $arguments += @("--token", $Token)
 }
 

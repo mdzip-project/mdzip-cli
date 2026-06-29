@@ -15,7 +15,7 @@ Although the CLI is built with C#, binaries are distributed as prebuilt release 
 **Windows** (WinGet, once the package is accepted):
 
 ```powershell
-winget install MDZipProject.mdz
+winget install MDZip.Cli
 ```
 
 **Windows** (PowerShell, will put `mdz.cmd` in `%LOCALAPPDATA%\Microsoft\WindowsApps`):

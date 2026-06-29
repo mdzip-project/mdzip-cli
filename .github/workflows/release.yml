@@ -135,7 +135,7 @@ jobs:
           $version = "${{ github.ref_name }}" -replace '^v', ''
 
           .\scripts\update-winget.ps1 `
-            -PackageIdentifier "MDZipProject.mdz" `
+            -PackageIdentifier "MDZip.Cli" `
             -Version $version `
             -Tag "${{ github.ref_name }}" `
             -RepoOwner "${{ github.repository_owner }}" `
