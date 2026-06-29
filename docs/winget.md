@@ -14,8 +14,8 @@ WinGet updates require an existing package manifest in `microsoft/winget-pkgs`. 
 .\scripts\update-winget.ps1 `
   -Mode New `
   -PackageIdentifier MDZipProject.mdz `
-  -Version 1.2.0 `
-  -Tag v1.2.0 `
+  -Version 1.3.0 `
+  -Tag v1.3.0 `
   -Token <github-pat>
 ```
 
