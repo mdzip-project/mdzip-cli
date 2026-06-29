@@ -1,0 +1,106 @@
+name: install-scripts
+
+# Verifies the one-line install scripts work regardless of an ambient
+# GITHUB_TOKEN. The repo is public, so no token is required; a present-but-bad
+# token must NOT break the install (it should warn and retry unauthenticated).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/install.ps1'
+      - 'scripts/install.sh'
+      - '.github/workflows/install-scripts.yml'
+  pull_request:
+    paths:
+      - 'scripts/install.ps1'
+      - 'scripts/install.sh'
+      - '.github/workflows/install-scripts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A deliberately invalid token. Any malformed value makes GitHub return 401,
+# which is exactly the "dev with an expired token" case we want to cover.
+env:
+  BAD_TOKEN: ghp_invalidTokenForFallbackTest000000000000
+
+jobs:
+  windows:
+    name: install.ps1 (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Invalid token -> must warn and still install
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ env.BAD_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = & ./scripts/install.ps1 *>&1 | Out-String
+          Write-Host $out
+          if ($out -notmatch 'retrying without authentication') {
+            throw 'Expected the unauthenticated-retry warning, but it was not emitted.'
+          }
+          $v = & "$env:LOCALAPPDATA\Microsoft\WindowsApps\mdz.cmd" --version 2>&1 | Out-String
+          Write-Host "mdz --version -> $v"
+          if ($v -notmatch '\d+\.\d+\.\d+') { throw 'mdz did not report a version after install.' }
+
+      - name: No token -> must install with no warning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item Env:GITHUB_TOKEN -ErrorAction SilentlyContinue
+          $out = & ./scripts/install.ps1 *>&1 | Out-String
+          Write-Host $out
+          if ($out -match 'retrying without authentication') {
+            throw 'Got the unauthenticated-retry warning even though no token was set.'
+          }
+          $v = & "$env:LOCALAPPDATA\Microsoft\WindowsApps\mdz.cmd" --version 2>&1 | Out-String
+          Write-Host "mdz --version -> $v"
+          if ($v -notmatch '\d+\.\d+\.\d+') { throw 'mdz did not report a version after install.' }
+
+  posix:
+    name: install.sh (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Invalid token -> must warn and still install
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ env.BAD_TOKEN }}
+        run: |
+          set +e
+          out="$(sh ./scripts/install.sh 2>&1)"; rc=$?
+          set -e
+          echo "$out"
+          if [ "$rc" -ne 0 ]; then echo "install.sh exited $rc"; exit 1; fi
+          echo "$out" | grep -q 'retrying without authentication' \
+            || { echo 'Expected the unauthenticated-retry warning, but it was not emitted.'; exit 1; }
+          v="$("$HOME/.local/bin/mdz" --version 2>&1 || true)"
+          echo "mdz --version -> $v"
+          echo "$v" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+' \
+            || { echo 'mdz did not report a version after install.'; exit 1; }
+
+      - name: No token -> must install with no warning
+        shell: bash
+        run: |
+          unset GITHUB_TOKEN
+          set +e
+          out="$(sh ./scripts/install.sh 2>&1)"; rc=$?
+          set -e
+          echo "$out"
+          if [ "$rc" -ne 0 ]; then echo "install.sh exited $rc"; exit 1; fi
+          if echo "$out" | grep -q 'retrying without authentication'; then
+            echo 'Got the unauthenticated-retry warning even though no token was set.'; exit 1
+          fi
+          v="$("$HOME/.local/bin/mdz" --version 2>&1 || true)"
+          echo "mdz --version -> $v"
+          echo "$v" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+' \
+            || { echo 'mdz did not report a version after install.'; exit 1; }
