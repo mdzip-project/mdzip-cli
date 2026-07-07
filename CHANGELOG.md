@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Published binaries are now trimmed (`PublishTrimmed` with `TrimMode=partial`), cutting the self-contained executable from ~71 MB to ~15 MB. Only the trim-annotated BCL is trimmed; `mdzip-core` and `System.CommandLine` are kept whole, and `JsonSerializerIsReflectionEnabledByDefault=true` preserves the reflection-based manifest JSON serialization (full trimming breaks it).
+
 ## [1.3.0] - 2026-06-29
 
 ### Added

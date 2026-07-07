@@ -1,5 +1,5 @@
-Status: idle
-Last: Committed CLI parity, mdz.exe publish, WinGet, and core 1.3.0 updates
+Status: ready-to-commit
+Last: Enabled partial trimming (71MB -> 15MB exe), 61/61 tests pass, trimmed exe smoke-tested
 
 <!-- Dashboard reads these two lines.
      Status: idle | in-progress | awaiting-test | ready-to-commit | blocked

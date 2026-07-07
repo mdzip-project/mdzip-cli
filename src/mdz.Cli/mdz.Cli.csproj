@@ -10,7 +10,14 @@
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishTrimmed>false</PublishTrimmed>
+    <!-- Partial trim cuts the self-contained exe ~71MB -> ~15MB by trimming
+         only the trim-annotated BCL; mdzip-core and System.CommandLine are
+         left whole. Full trim breaks manifest JSON (reflection-based
+         System.Text.Json), so the reflection switch below must stay true —
+         and it only takes effect from the project file, not -p: overrides. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>
