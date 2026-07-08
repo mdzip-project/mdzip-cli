@@ -2,10 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.3.1] - 2026-07-08
 
 ### Changed
 - Published binaries are now trimmed (`PublishTrimmed` with `TrimMode=partial`), cutting the self-contained executable from ~71 MB to ~15 MB. Only the trim-annotated BCL is trimmed; `mdzip-core` and `System.CommandLine` are kept whole, and `JsonSerializerIsReflectionEnabledByDefault=true` preserves the reflection-based manifest JSON serialization (full trimming breaks it).
+- Updated the `mdzip-core` dependency to `1.3.3` — orphan-asset detection now recognizes raw HTML `<img src>` references.
+- WinGet manifests for `MDZip.Cli` are authored in-repo under `winget/` (initial 1.3.0 submission pending in microsoft/winget-pkgs).
 
 ## [1.3.0] - 2026-06-29
 
