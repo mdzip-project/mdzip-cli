@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="mdzip-core" Version="1.3.3" />
+    <PackageReference Include="MDZip.Core" Version="1.4.0" />
   </ItemGroup>
 
   <ItemGroup>

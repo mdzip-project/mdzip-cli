@@ -6,12 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>mdz</AssemblyName>
-    <Version>1.3.1</Version>
+    <Version>1.3.2</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <!-- Partial trim cuts the self-contained exe ~71MB -> ~15MB by trimming
-         only the trim-annotated BCL; mdzip-core and System.CommandLine are
+         only the trim-annotated BCL; MDZip.Core and System.CommandLine are
          left whole. Full trim breaks manifest JSON (reflection-based
          System.Text.Json), so the reflection switch below must stay true —
          and it only takes effect from the project file, not -p: overrides. -->
