@@ -120,16 +120,26 @@ public sealed class SpecFixtureTests : IDisposable
         return value!;
     }
 
+    /// <summary>
+    /// The vendored copy of the spec's fixtures (spec-fixtures/, synced from a
+    /// released spec tag with mdzip-spec tools/sync-fixtures.mjs). Set
+    /// MDZIP_SPEC_FIXTURES to a fixtures directory to test against another copy,
+    /// for example a draft spec checkout. A sibling mdzip-spec checkout is not
+    /// used implicitly, so results don't depend on which branch it's on.
+    /// </summary>
     private static string GetFixturesDirectory()
     {
+        var overrideDir = Environment.GetEnvironmentVariable("MDZIP_SPEC_FIXTURES");
+        if (!string.IsNullOrWhiteSpace(overrideDir))
+        {
+            if (!Directory.Exists(overrideDir))
+                throw new DirectoryNotFoundException($"MDZIP_SPEC_FIXTURES points to '{overrideDir}', which doesn't exist.");
+            return overrideDir;
+        }
+
         // mdz-cli repo root from test output: .../src/mdz.Tests/bin/{cfg}/{tfm}
         var repoRoot = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-
-        var siblingSpecRepo = Path.GetFullPath(Path.Combine(
-            repoRoot, "..", "mdzip-spec", "examples", "fixtures"));
-        if (Directory.Exists(siblingSpecRepo))
-            return siblingSpecRepo;
 
         var vendoredSpecFixtures = Path.GetFullPath(Path.Combine(
             repoRoot, "spec-fixtures"));
@@ -137,7 +147,28 @@ public sealed class SpecFixtureTests : IDisposable
             return vendoredSpecFixtures;
 
         throw new DirectoryNotFoundException(
-            $"Could not locate fixtures. Checked '{siblingSpecRepo}' and '{vendoredSpecFixtures}'.");
+            $"Could not locate fixtures at '{vendoredSpecFixtures}'. Run: node ../mdzip-spec/tools/sync-fixtures.mjs spec-fixtures --ref <tag>");
+    }
+
+    [Fact]
+    public void SpecFixtures_MatchMarker()
+    {
+        var dir = GetFixturesDirectory();
+        var markerPath = Path.Combine(dir, "SPEC-FIXTURES.json");
+        if (!File.Exists(markerPath))
+            return; // an override directory (e.g. a spec checkout) has no marker
+
+        using var marker = JsonDocument.Parse(File.ReadAllText(markerPath));
+        var specRef = marker.RootElement.GetProperty("ref").GetString();
+        foreach (var file in marker.RootElement.GetProperty("files").EnumerateObject())
+        {
+            var path = Path.Combine(dir, file.Name);
+            Assert.True(File.Exists(path), $"Spec fixture '{file.Name}' is missing; re-run sync-fixtures.mjs.");
+            var actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+            Assert.True(
+                actual == file.Value.GetString(),
+                $"Spec fixture '{file.Name}' differs from spec {specRef}; re-run sync-fixtures.mjs instead of editing it.");
+        }
     }
 
     private static void CreateArchiveForEntryPointCase(string archivePath, EntryPointCase c)
@@ -155,7 +186,15 @@ public sealed class SpecFixtureTests : IDisposable
             stream.Write(body, 0, body.Length);
         }
 
-        if (c.Manifest is not null)
+        if (c.ManifestJson is not null)
+        {
+            // Malformed manifests are given as exact text (see the spec fixtures README).
+            var entry = zip.CreateEntry("manifest.json");
+            using var stream = entry.Open();
+            var body = Encoding.UTF8.GetBytes(c.ManifestJson);
+            stream.Write(body, 0, body.Length);
+        }
+        else if (c.Manifest is not null)
         {
             var entry = zip.CreateEntry("manifest.json");
             using var stream = entry.Open();
@@ -174,6 +213,7 @@ public sealed class SpecFixtureTests : IDisposable
         public string Name { get; set; } = string.Empty;
         public List<string> Files { get; set; } = [];
         public EntryPointManifest? Manifest { get; set; }
+        public string? ManifestJson { get; set; }
         public string? ExpectedEntryPoint { get; set; }
     }
 

@@ -1,5 +1,7 @@
-Status: idle
-Last: Released v1.3.1 (trimmed 15MB binaries, core 1.3.3); winget 1.3.0 PR merged 2026-07-15 — `winget install MDZip.Cli` live
+Status: ready-to-commit
+Last:   Branch chore/sync-spec-fixtures: vendored spec-fixtures (v1.1.0) instead of sibling checkout, manifestJson support, marker test (62/62)
+
+Owner to-do (review/commit/release steps): ../planning/owner-todo.md
 
 <!-- Dashboard reads these two lines.
      Version on the dashboard comes from the latest git tag (no package.json here). -->

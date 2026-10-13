@@ -1,0 +1,16 @@
+{
+  "source": "https://github.com/mdzip-project/mdzip-spec",
+  "ref": "v1.1.0",
+  "commit": "7e17f4b05d1c396c70f12ce61102026d23f67a82",
+  "note": "Copied by mdzip-spec tools/sync-fixtures.mjs. Do not edit these files by hand; add implementation-specific cases in separate files.",
+  "files": {
+    "create-filter-cases.json": "cdf9a9cb17e9c8094d47aa4b49e9f1f78b58340aa2ff53fb06f02120be8b75f5",
+    "entrypoint-cases.json": "838bbd47372f069ef4c14df6acaf307116482ed709083206cabb8355a4bc6c82",
+    "invalid-bad-entrypoint.mdz": "6ed99f65eeb53afe1d2f7ac73cf45562eefc238d7ab111aef14337594e60ad22",
+    "invalid-missing-index.mdz": "5eff67350b6aa92777001e33f6c70bd6a74b58c615dcdf67b0265b90ccd2588f",
+    "line-endings-crlf.mdz": "20fce978e1c09ff3e6966b47f0c6d9acd3063591217abb6b35c2794e5211caa3",
+    "minimal.mdz": "e22527d1f2b4e0da69e099d9577fde67627fb24998bc14519e25ced3fad7af79",
+    "path-validation-cases.json": "c44af6bc1db71a1e3bfb283d359d02922d59277ae81dc4c57ccca631e77f6b79",
+    "with-manifest.mdz": "95f1959bfae54213081467f660d4934535e493d0f428698b0603f4aacb219447"
+  }
+}
