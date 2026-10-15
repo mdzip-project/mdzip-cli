@@ -44,7 +44,7 @@ public static class AssetsCommand
             var entries = MdzArchive.ListDetailed(archivePath)
                 .Where(entry => !entry.IsDirectory
                     && !entry.IsMarkdown
-                    && !entry.Path.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
+                    && !entry.Path.Equals("manifest.json", StringComparison.Ordinal))
                 .ToList();
 
             Console.WriteLine("Assets:");

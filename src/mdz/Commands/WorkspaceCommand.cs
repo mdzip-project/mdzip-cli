@@ -94,10 +94,13 @@ public static class WorkspaceCommand
         {
             var workspace = MdzArchive.OpenWorkspace(archivePath);
             var asset = workspace.Assets.FirstOrDefault(item =>
-                item.Path.Equals(assetPath, StringComparison.OrdinalIgnoreCase));
+                MdzSpec.SamePath(item.Path, assetPath));
             if (asset is null)
             {
-                Console.Error.WriteLine($"Error: Asset '{assetPath}' was not found.");
+                var near = workspace.Assets.FirstOrDefault(item =>
+                    MdzSpec.Nfc(item.Path).Equals(MdzSpec.Nfc(assetPath), StringComparison.OrdinalIgnoreCase));
+                var hint = near is null ? string.Empty : $" Did you mean '{near.Path}'? Paths are case-sensitive.";
+                Console.Error.WriteLine($"Error: Asset '{assetPath}' was not found.{hint}");
                 return 1;
             }
 

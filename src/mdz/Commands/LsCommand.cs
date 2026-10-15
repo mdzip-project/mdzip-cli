@@ -143,7 +143,7 @@ public static class LsCommand
         public TreeNode GetOrAddChild(string name, bool isDirectory)
         {
             var existing = Children.FirstOrDefault(c =>
-                c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                c.Name.Equals(name, StringComparison.Ordinal));
             if (existing is not null)
             {
                 existing.IsDirectory |= isDirectory;

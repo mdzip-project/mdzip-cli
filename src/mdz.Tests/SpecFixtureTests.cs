@@ -35,7 +35,14 @@ public sealed class SpecFixtureTests : IDisposable
             CreateArchiveForEntryPointCase(archivePath, c);
 
             var actual = MdzArchive.ResolveEntryPoint(archivePath);
-            Assert.Equal(c.ExpectedEntryPoint, actual);
+            Assert.True(c.ExpectedEntryPoint == actual, $"{c.Name}: got '{actual}'");
+
+            // 1.2.0: a declared entryPoint that's invalid or missing never falls back (§5.5).
+            if (c.ExpectedError is not null)
+            {
+                var ex = Assert.ThrowsAny<InvalidOperationException>(() => MdzArchive.ResolveEntryPointStrict(archivePath));
+                Assert.True(c.ExpectedError == MdzSpec.ErrorCode(ex), $"{c.Name}: {ex.Message}");
+            }
         }
     }
 
@@ -47,23 +54,11 @@ public sealed class SpecFixtureTests : IDisposable
 
         foreach (var c in cases!)
         {
-            var error = PathValidator.Validate(c.Path);
-            Assert.Equal(c.Valid, error is null);
+            var problem = PathValidator.GetProblem(c.Path);
+            Assert.True(c.Valid == problem is null, $"{c.Name}: {problem?.Message}");
 
             if (!c.Valid && !string.IsNullOrWhiteSpace(c.ErrorCode))
-            {
-                var expectedSnippet = c.ErrorCode switch
-                {
-                    "ERR_PATH_LEADING_SLASH" => "leading slash",
-                    "ERR_PATH_TRAVERSAL" => "path traversal",
-                    "ERR_PATH_RESERVED_CHAR" => "OS-reserved character",
-                    "ERR_PATH_CONTROL_CHAR" => "control characters",
-                    _ => null
-                };
-
-                if (expectedSnippet is not null)
-                    Assert.Contains(expectedSnippet, error!, StringComparison.OrdinalIgnoreCase);
-            }
+                Assert.True(c.ErrorCode == problem!.Code, $"{c.Name}: got {problem!.Code}");
         }
     }
 
@@ -127,6 +122,8 @@ public sealed class SpecFixtureTests : IDisposable
     /// for example a draft spec checkout. A sibling mdzip-spec checkout is not
     /// used implicitly, so results don't depend on which branch it's on.
     /// </summary>
+    internal static string FixturesDirectory => GetFixturesDirectory();
+
     private static string GetFixturesDirectory()
     {
         var overrideDir = Environment.GetEnvironmentVariable("MDZIP_SPEC_FIXTURES");
@@ -177,7 +174,7 @@ public sealed class SpecFixtureTests : IDisposable
 
         foreach (var path in c.Files)
         {
-            if (path.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
+            if (path.Equals("manifest.json", StringComparison.Ordinal))
                 continue;
 
             var entry = zip.CreateEntry(path);
@@ -215,6 +212,7 @@ public sealed class SpecFixtureTests : IDisposable
         public EntryPointManifest? Manifest { get; set; }
         public string? ManifestJson { get; set; }
         public string? ExpectedEntryPoint { get; set; }
+        public string? ExpectedError { get; set; }
     }
 
     private sealed class EntryPointManifest

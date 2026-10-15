@@ -61,7 +61,7 @@ internal static class HelpPrinter
 
             if (command.Name.Equals("create", StringComparison.OrdinalIgnoreCase))
             {
-                WriteWrapped("    * = Manifest-writing option. Passing any * option writes manifest.json (spec/version metadata included).");
+                WriteWrapped("    * = Manifest metadata option. mdz always writes manifest.json (spec version, title, entry point, mode); * options set its fields.");
             }
         }
     }

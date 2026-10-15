@@ -3,6 +3,7 @@ using System.CommandLine.Invocation;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Nodes;
 using MDZip.Core.Models;
 using MDZip.Core;
 
@@ -220,7 +221,7 @@ public static class CreateCommand
 
             manifest = new Manifest
             {
-                Spec = new ManifestSpec { Name = "mdzip-spec", Version = "1.1.0" },
+                Spec = new ManifestSpec { Name = MdzSpec.SpecName, Version = MdzSpec.SpecVersion },
                 Producer = BuildProducerMetadata(),
                 Title = effectiveTitle,
                 EntryPoint = entryPoint,
@@ -255,18 +256,34 @@ public static class CreateCommand
                 manifest.Files = scan.ManifestFiles;
 
             var archivePaths = scan.Files.Select(file => file.ArchivePath).ToList();
-            if (!string.IsNullOrWhiteSpace(manifest?.EntryPoint)
-                && !archivePaths.Any(path => path.Equals(manifest.EntryPoint, StringComparison.OrdinalIgnoreCase)))
+
+            // A conforming producer always writes manifest.json (§14.1). Without metadata options, a
+            // manifest.json in the source is used as-is; otherwise one is generated, titled after the folder.
+            if (manifest is null && !archivePaths.Contains(ManifestFileName, StringComparer.Ordinal))
             {
-                Console.Error.WriteLine(
-                    $"Error: Manifest entry-point '{manifest.EntryPoint}' was provided but does not exist. " +
-                    "Update --entry-point or remove it to allow entry-point discovery.");
-                return 1;
+                manifest = new Manifest
+                {
+                    Spec = new ManifestSpec { Name = MdzSpec.SpecName, Version = MdzSpec.SpecVersion },
+                    Producer = BuildProducerMetadata(),
+                    Title = source.Name,
+                };
+            }
+
+            // The entry point the archive declares: --entry-point, or the source manifest.json's.
+            var declaredEntryPoint = manifest is not null ? manifest.EntryPoint : SourceManifestEntryPoint(scan.Files);
+            if (!string.IsNullOrWhiteSpace(declaredEntryPoint))
+            {
+                var entryPointError = EntryPointError(archivePaths, declaredEntryPoint);
+                if (entryPointError is not null)
+                {
+                    Console.Error.WriteLine($"Error: {entryPointError}");
+                    return 1;
+                }
             }
 
             if (!createIndex)
             {
-                var resolvedEntryPoint = ResolveEntryPoint(archivePaths, manifest);
+                var resolvedEntryPoint = ResolveEntryPoint(archivePaths, declaredEntryPoint);
                 if (resolvedEntryPoint is null)
                 {
                     if (IsInteractiveConsole(noInteractive))
@@ -294,12 +311,12 @@ public static class CreateCommand
             {
                 var files = scan.Files.ToList();
 
-                var entryPointResolved = ResolveEntryPoint(files.Select(f => f.ArchivePath).ToList(), manifest);
+                var entryPointResolved = ResolveEntryPoint(files.Select(f => f.ArchivePath).ToList(), declaredEntryPoint);
                 var tempIndexPath = string.Empty;
 
                 if (entryPointResolved is null)
                 {
-                    if (!string.IsNullOrWhiteSpace(manifest?.EntryPoint))
+                    if (!string.IsNullOrWhiteSpace(declaredEntryPoint))
                     {
                         Console.Error.WriteLine(
                             $"Error: Manifest entry-point '{manifest.EntryPoint}' was provided but does not exist. " +
@@ -513,28 +530,57 @@ public static class CreateCommand
         sb.Append('\n');
     }
 
-    private static string? ResolveEntryPoint(IReadOnlyList<string> archivePaths, Manifest? manifest)
+    private const string ManifestFileName = "manifest.json";
+
+    /// <summary>The entry point the archive will have (§5.5), or null when there's none.</summary>
+    private static string? ResolveEntryPoint(IReadOnlyList<string> archivePaths, string? declaredEntryPoint) =>
+        MdzSpec.TryResolveEntryPoint(archivePaths, EntryPointManifest(declaredEntryPoint));
+
+    /// <summary>
+    /// The <c>entryPoint</c> of a manifest.json in the source that will be packaged as the archive's
+    /// manifest, or null. An unreadable one is left for MDZip.Core to report when it writes the archive.
+    /// </summary>
+    private static string? SourceManifestEntryPoint(IReadOnlyList<(string ArchivePath, string LocalPath)> files)
     {
-        if (manifest?.EntryPoint is { Length: > 0 } ep
-            && archivePaths.Any(path => path.Equals(ep, StringComparison.OrdinalIgnoreCase)))
+        var provided = files.FirstOrDefault(f => f.ArchivePath == ManifestFileName);
+        if (provided.LocalPath is null)
+            return null;
+
+        try
         {
-            return ep;
+            var manifest = MdzSpec.ParseManifest(File.ReadAllText(provided.LocalPath, Encoding.UTF8)).Manifest;
+            return manifest["entryPoint"] is JsonValue value && value.TryGetValue<string>(out var entryPoint) ? entryPoint : null;
         }
-
-        if (archivePaths.Any(path => path.Equals("index.md", StringComparison.OrdinalIgnoreCase)))
-            return "index.md";
-
-        var rootMarkdown = archivePaths
-            .Where(path => !path.Contains('/'))
-            .Where(IsMarkdownFile)
-            .ToList();
-
-        return rootMarkdown.Count == 1 ? rootMarkdown[0] : null;
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
-    private static bool IsMarkdownFile(string path) =>
-        path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
-        || path.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Why a requested entry point can't be used (§5.5): not a valid Markdown path, or no such file.
+    /// Paths are case-sensitive, so a case-only match is suggested, never used (§5.4.1).
+    /// </summary>
+    private static string? EntryPointError(IReadOnlyList<string> archivePaths, string entryPoint)
+    {
+        var problem = MdzSpec.EntryPointProblem(JsonValue.Create(entryPoint));
+        if (problem is not null)
+            return $"ERR_ENTRYPOINT_INVALID: {problem}. Update --entry-point.";
+
+        if (MdzSpec.TryResolveEntryPoint(archivePaths, EntryPointManifest(entryPoint)) is not null)
+            return null;
+
+        var wanted = MdzSpec.Nfc(entryPoint.StartsWith("./", StringComparison.Ordinal) ? entryPoint[2..] : entryPoint);
+        var near = archivePaths.FirstOrDefault(path => MdzSpec.Nfc(path).Equals(wanted, StringComparison.OrdinalIgnoreCase));
+        var hint = near is null ? string.Empty : $" Did you mean '{near}'? Paths are case-sensitive.";
+        return $"ERR_ENTRYPOINT_MISSING: Manifest entry-point '{entryPoint}' was provided but does not exist.{hint} " +
+            "Update --entry-point or remove it to allow entry-point discovery.";
+    }
+
+    private static JsonObject? EntryPointManifest(string? entryPoint) =>
+        string.IsNullOrWhiteSpace(entryPoint) ? null : new JsonObject { ["entryPoint"] = entryPoint };
+
+    private static bool IsMarkdownFile(string path) => MdzSpec.IsMarkdownPath(path);
 
     private static string ToMarkdownLinkTarget(string path)
     {
@@ -589,7 +635,7 @@ public static class CreateCommand
                 continue;
             }
 
-            if (manifest is not null && archivePath.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
+            if (manifest is not null && archivePath.Equals(ManifestFileName, StringComparison.Ordinal))
             {
                 AddSkip(skippedByReason, "manifest.json replaced by generated manifest");
                 continue;
@@ -696,7 +742,7 @@ public static class CreateCommand
 
         manifest = new Manifest
         {
-            Spec = new ManifestSpec { Name = "mdzip-spec", Version = "1.1.0" },
+            Spec = new ManifestSpec { Name = MdzSpec.SpecName, Version = MdzSpec.SpecVersion },
             Producer = BuildProducerMetadata(),
             Title = effectiveTitle,
             Language = "en",
@@ -769,6 +815,9 @@ public static class CreateCommand
 
     private static string MakeUniqueArchivePath(string candidate, HashSet<string> usedPaths)
     {
+        // Archive paths are stored NFC (§5.4). Names that differ only in case are allowed but
+        // collide on case-insensitive file systems, so they're still made unique here.
+        candidate = MdzSpec.Nfc(candidate);
         if (usedPaths.Add(candidate))
             return candidate;
 
@@ -923,7 +972,7 @@ public static class CreateCommand
 
         public IndexNode GetOrAdd(string name, bool isDirectory)
         {
-            var existing = Children.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            var existing = Children.FirstOrDefault(c => c.Name.Equals(name, StringComparison.Ordinal));
             if (existing is not null)
             {
                 existing.IsDirectory |= isDirectory;

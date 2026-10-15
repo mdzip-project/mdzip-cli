@@ -1,5 +1,5 @@
 Status: ready-to-commit
-Last:   Branch chore/sync-spec-fixtures: vendored spec-fixtures (v1.1.0) instead of sibling checkout, manifestJson support, marker test (62/62)
+Last:   v2.0.0 ready: mdz on MDZip.Core 2.0.0 + spec 1.2.0 (#7); 78/78 tests, trimmed publish tested by owner
 
 Owner to-do (review/commit/release steps): ../planning/owner-todo.md
 

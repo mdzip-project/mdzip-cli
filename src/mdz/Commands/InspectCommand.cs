@@ -58,8 +58,8 @@ public static class InspectCommand
 
             if (manifest is null)
             {
-                Console.WriteLine("  No manifest.json found.");
-                Console.WriteLine("  Warning: Version metadata is unavailable.");
+                Console.WriteLine("  No manifest.json found (allowed; a conforming producer would have written one).");
+                Console.WriteLine("  Version metadata is unavailable.");
             }
             else
             {
@@ -106,13 +106,17 @@ public static class InspectCommand
 
             Console.WriteLine();
 
-            var entryPoint = MdzArchive.ResolveEntryPoint(archivePath);
             var mode = MdzArchive.ResolveMode(archivePath);
             Console.WriteLine($"Resolved mode: {mode}");
-            if (entryPoint is not null)
-                Console.WriteLine($"Resolved entry point: {entryPoint}");
-            else
-                Console.WriteLine("Resolved entry point: (none - no unambiguous entry point found)");
+            try
+            {
+                Console.WriteLine($"Resolved entry point: {MdzArchive.ResolveEntryPointStrict(archivePath)}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                // ERR_ENTRYPOINT_INVALID / _MISSING / _UNRESOLVED; there's no fallback (§5.5).
+                Console.WriteLine($"Resolved entry point: (none) {ex.Message}");
+            }
 
             var entries = MdzArchive.List(archivePath);
             Console.WriteLine($"Total files: {entries.Count}");

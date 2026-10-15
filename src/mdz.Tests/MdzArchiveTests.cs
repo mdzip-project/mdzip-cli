@@ -112,7 +112,7 @@ public class MdzArchiveTests : IDisposable
         var archivePath = NewArchivePath();
 
         var ex = Assert.Throws<InvalidOperationException>(() => MdzArchive.Create(archivePath, src));
-        Assert.Contains("No unambiguous entry point", ex.Message);
+        Assert.Equal("ERR_ENTRYPOINT_UNRESOLVED", MdzSpec.ErrorCode(ex));
     }
 
     [Fact]
@@ -186,8 +186,8 @@ public class MdzArchiveTests : IDisposable
 
         var entries = MdzArchive.ListDetailed(archivePath);
 
-        Assert.Single(entries);
-        Assert.Equal("index.md", entries[0].Path);
+        // Producers always write manifest.json (spec 1.2.0 §14.1).
+        Assert.Equal(["index.md", "manifest.json"], entries.Select(e => e.Path));
         Assert.True(entries[0].Size > 0);
     }
 
@@ -198,9 +198,13 @@ public class MdzArchiveTests : IDisposable
     [Fact]
     public void ReadManifest_NoManifest_ReturnsNull()
     {
-        var src = MakeSourceDir(("index.md", "# Hello"));
+        // Only a third-party producer can leave manifest.json out now (spec 1.2.0 §14.1).
         var archivePath = NewArchivePath();
-        MdzArchive.Create(archivePath, src);
+        using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            using var s = zip.CreateEntry("index.md").Open();
+            s.Write(Encoding.UTF8.GetBytes("# Hello"));
+        }
 
         var manifest = MdzArchive.ReadManifest(archivePath);
 
@@ -417,7 +421,7 @@ public class MdzArchiveTests : IDisposable
         var result = MdzArchive.Validate(archivePath);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.Contains("ERR_MANIFEST_INVALID") && e.Contains("not a valid semver string"));
+        Assert.Contains(result.Errors, e => e.StartsWith("ERR_MANIFEST_INVALID", StringComparison.Ordinal) && e.Contains("spec.version"));
     }
 
     [Fact]

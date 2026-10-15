@@ -55,6 +55,14 @@ public static class CatCommand
                 Console.Write(MdzArchive.ReadText(archivePath, entry));
             return 0;
         }
+        catch (FileNotFoundException ex)
+        {
+            // Lookups are case-sensitive (§5.4.1); a case-only match is suggested, never opened.
+            var near = MdzArchive.FindCaseOnlyMatch(archivePath, entry);
+            var hint = near is null ? string.Empty : $" Did you mean '{near}'? Paths are case-sensitive.";
+            Console.Error.WriteLine($"Error: {ex.Message}{hint}");
+            return 1;
+        }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");

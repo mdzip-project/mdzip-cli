@@ -43,11 +43,24 @@ public static class ValidateCommand
 
         var result = MdzArchive.Validate(archivePath);
         var archiveName = Path.GetFileName(archivePath);
-        var status = MdzArchive.GetValidationStatus(result);
+
+        // A missing manifest.json isn't a conformance problem for the archive (§6, §14.2), so it's a
+        // note rather than a warning and doesn't change the status.
+        var noManifest = result.Warnings.Where(IsNoManifestWarning).ToList();
+        var warnings = result.Warnings.Except(noManifest).ToList();
+        var status = MdzArchive.GetValidationStatus(new ValidationResult
+        {
+            IsValid = result.IsValid,
+            Errors = result.Errors,
+            Warnings = warnings,
+        });
 
         Console.WriteLine($"Status: {status}");
 
-        foreach (var warning in result.Warnings)
+        if (noManifest.Count > 0)
+            Console.WriteLine("  Note: No manifest.json (allowed; a conforming producer would have written one). Version metadata is unavailable.");
+
+        foreach (var warning in warnings)
             Console.WriteLine($"  Warning: {warning}");
 
         if (result.IsValid)
@@ -62,4 +75,7 @@ public static class ValidateCommand
         Console.Error.WriteLine($"'{archiveName}' is INVALID ({result.Errors.Count} error(s)).");
         return 1;
     }
+
+    private static bool IsNoManifestWarning(string warning) =>
+        warning.StartsWith("No manifest.json present", StringComparison.Ordinal);
 }
