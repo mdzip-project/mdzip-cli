@@ -1,5 +1,5 @@
-Status: ready-to-commit
-Last:   v2.0.0 ready: mdz on MDZip.Core 2.0.0 + spec 1.2.0 (#7); 78/78 tests, trimmed publish tested by owner
+Status: idle
+Last:   Released mdz v2.0.0 (spec 1.2.0, MDZip.Core 2.0.0): GitHub release, #7 closed; WinGet PR microsoft/winget-pkgs#453090 open (2026-10-14)
 
 Owner to-do (review/commit/release steps): ../planning/owner-todo.md
 
