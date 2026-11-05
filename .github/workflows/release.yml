@@ -92,7 +92,7 @@ jobs:
           Compress-Archive -Path "out/${{ matrix.rid }}/*" -DestinationPath "dist/mdz-${{ steps.tag.outputs.tag }}-${{ matrix.rid }}.zip" -Force
 
       - name: Upload packaged artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: package-${{ matrix.rid }}
           path: dist/*
@@ -103,14 +103,14 @@ jobs:
     if: github.ref_type == 'tag'
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: dist
           pattern: package-*
           merge-multiple: true
 
       - name: Publish GitHub release assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
 
