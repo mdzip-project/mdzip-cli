@@ -14,6 +14,7 @@ namespace MDZip.Tests;
 /// and the shared fixtures for entry sets (T-013), round trips (P-004, P-005) and the generated
 /// archives (T-014, T-015, T-017, P-008).
 /// </summary>
+[Collection("Console")]
 public sealed class Spec12CommandTests : IDisposable
 {
     private static readonly object ConsoleLock = new();

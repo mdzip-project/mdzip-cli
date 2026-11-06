@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.1] - 2026-11-05
+
+### Fixed
+- **`add` keeps the entry point** when an archive's manifest has no `entryPoint` and a second root Markdown file is added. Before, the archive was left with two candidate main documents and none recorded; now the current entry point is written to the manifest. Comes from `MDZip.Core` 2.0.1.
+- **Non-ASCII text on Windows** ([#9](https://github.com/mdzip-project/mdzip-cli/issues/9)). All output is now UTF-8 (no BOM). It used the console's legacy code page (437 in the US), which replaced characters like `—` and `✅` with `-` and `?` in `cat`, `ls`, `inspect` and error messages. The console's code page is put back when `mdz` exits.
+- **`cat` writes the entry's exact bytes**, without decoding and re-encoding it. Line endings, a BOM and non-UTF-8 text come through untouched, so `mdz cat a.mdz page.md > page.md`, then editing and `mdz add`, no longer corrupts the document.
+
+### Changed
+- Updated `MDZip.Core` to `2.0.1`.
+
+### Tests
+- `cat` output is compared byte for byte: non-ASCII Markdown, a BOM with CRLF, Latin-1 text, and a `cat` → `add` round trip.
+- `add` of a second root Markdown file to an archive whose manifest has no `entryPoint` (fails on `MDZip.Core` 2.0.0).
+
 ## [2.0.0] - 2026-10-14
 
 Implements MDZip spec **1.2.0** on `MDZip.Core` 2.0.0 ([#7](https://github.com/mdzip-project/mdzip-cli/issues/7)).

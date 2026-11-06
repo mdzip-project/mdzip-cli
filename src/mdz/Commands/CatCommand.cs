@@ -6,6 +6,12 @@ namespace MDZip.Commands;
 
 public static class CatCommand
 {
+    /// <summary>
+    /// Where <c>cat</c> writes an entry's raw bytes. Tests swap in a <see cref="MemoryStream"/>,
+    /// because <see cref="Console.SetOut"/> doesn't capture writes to the standard output stream.
+    /// </summary>
+    public static Func<Stream> OpenStandardOutput { get; set; } = Console.OpenStandardOutput;
+
     public static Command Build()
     {
         var archiveArg = new Argument<FileInfo>("archive", "Path to the .mdz file.");
@@ -52,7 +58,7 @@ public static class CatCommand
             else if (base64)
                 Console.WriteLine(MdzArchive.ReadBase64(archivePath, entry));
             else
-                Console.Write(MdzArchive.ReadText(archivePath, entry));
+                WriteRaw(MdzArchive.ReadBytes(archivePath, entry));
             return 0;
         }
         catch (FileNotFoundException ex)
@@ -68,5 +74,18 @@ public static class CatCommand
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Writes the entry exactly as stored: no decoding or re-encoding, so line endings, a BOM and
+    /// non-UTF-8 text survive, and <c>mdz cat a.mdz x &gt; y</c> then <c>mdz add</c> round-trips
+    /// (mdzip-cli#9).
+    /// </summary>
+    private static void WriteRaw(byte[] bytes)
+    {
+        Console.Out.Flush();
+        var stdout = OpenStandardOutput();
+        stdout.Write(bytes);
+        stdout.Flush();
     }
 }

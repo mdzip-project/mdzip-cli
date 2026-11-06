@@ -1,6 +1,26 @@
 using System.CommandLine;
 using System.Reflection;
+using System.Text;
 using MDZip.Commands;
+
+// Print UTF-8 (no BOM) everywhere. On Windows .NET otherwise uses the console's OEM code page
+// (437 in the US) and replaces characters it lacks, corrupting `mdz ls`, `inspect` and error
+// text (mdzip-cli#9). On Windows this also switches the console to code page 65001, so the
+// original is put back on exit.
+try
+{
+    var originalOutputEncoding = Console.OutputEncoding;
+    Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+    AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+    {
+        try { Console.OutputEncoding = originalOutputEncoding; }
+        catch (IOException) { }
+    };
+}
+catch (IOException)
+{
+    // No console to configure (e.g. a detached process); output still works.
+}
 
 var rawVersion = Assembly.GetEntryAssembly()?
     .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?

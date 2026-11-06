@@ -54,6 +54,33 @@ public class AddRemoveCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task AddCommand_SecondRootMarkdown_ManifestWithoutEntryPoint_KeepsEntryPoint()
+    {
+        // A manifest without entryPoint, and index.md as the only root Markdown file, so the
+        // entry point is index.md by discovery. With MDZip.Core 2.0.0, adding a second root .md
+        // left two candidates and no recorded entry point; 2.0.1 records index.md in the manifest.
+        var archivePath = NewArchivePath();
+        using (var zip = System.IO.Compression.ZipFile.Open(archivePath, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            using (var w = new StreamWriter(zip.CreateEntry("index.md").Open()))
+                w.Write("# Hello\n");
+            using (var w = new StreamWriter(zip.CreateEntry("manifest.json").Open()))
+                w.Write("{\"spec\":{\"version\":\"1.2.0\"},\"title\":\"Test\",\"mode\":\"document\"}");
+        }
+
+        var localFile = Path.Combine(_tempDir, "second.md");
+        await File.WriteAllTextAsync(localFile, "# Second\n");
+
+        var root = new RootCommand { AddCommand.Build() };
+        var exitCode = await root.InvokeAsync(["add", archivePath, "second.md", localFile]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("second.md", MdzArchive.List(archivePath));
+        Assert.Equal("index.md", MdzArchive.ReadManifest(archivePath)?.EntryPoint);
+        Assert.Equal("index.md", MdzArchive.ResolveEntryPoint(archivePath));
+    }
+
+    [Fact]
     public async Task AddCommand_MissingSourceFile_ReturnsOne()
     {
         var src = MakeSourceDir(("index.md", "# Hello"));
