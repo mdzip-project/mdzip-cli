@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 NuGet.Config
 out/
 RELEASE_TAGGING.md
+
+# Local-only release notes and checklists (private/Publish.mdz)
+private/

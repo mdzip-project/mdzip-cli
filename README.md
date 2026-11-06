@@ -266,14 +266,13 @@ Paths inside an archive are case-sensitive and compared after Unicode NFC normal
 
 ## Development
 
-Implementation note: this project is written in C# and targets .NET 8.
+Implementation note: this project is written in C# and targets .NET 10.
 
 ### Browser Builder (experimental)
 
 A standalone browser page is available at [mdzip.org/packager.html](https://mdzip.org/packager.html). It accepts a dropped or selected folder, builds an `.mdz`, previews the resolved entry-point markdown, and provides a download link for the generated archive.
 
-Building from source requires [.NET 8 SDK](https://dotnet.microsoft.com/download).
-For Linux/macOS setup help, see [Install .NET on Linux/macOS](./INSTALL_DOTNET_LINUX_MACOS.md).
+Building from source requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (Windows, macOS and Linux). The release downloads, install scripts and WinGet package don't need .NET installed.
 
 ```bash
 # Build
