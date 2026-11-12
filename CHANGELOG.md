@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **`mdz textconv <archive>`** ([#13](https://github.com/mdzip-project/mdzip-cli/issues/13)): prints an archive as plain text for Git's textconv hook, so `git diff`, `git log -p` and editors' Git views show the lines that changed inside an `.mdz` instead of "Binary files differ". Each file is a section headed by its path, `manifest.json` first and the rest in path order; text files are printed in full with LF line endings, binary files as one line with their size and SHA-256. A file that isn't a readable archive (such as a Git LFS pointer) is printed as-is, so a diff never fails. The output is byte-for-byte the same as mdzip.org's `scripts/mdz-textconv.mjs`. Setup is in the README.
+
+### Tests
+- `textconv`: exact output with the manifest first and a binary entry; the same text whatever order the entries are stored in; BOM and CRLF normalized; a changed image changes one line; an archive made by `create`; a Git LFS pointer; a missing file.
+
 ## [2.0.1] - 2026-11-05
 
 ### Fixed

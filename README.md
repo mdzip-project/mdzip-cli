@@ -97,6 +97,7 @@ Note: `<archive>` is the `.mdz` file path; `.mdz` extension is optional.
 | `validate` | Validate an `.mdz` archive against the specification |
 | `ls` | List the contents of an `.mdz` archive |
 | `inspect` | Inspect metadata and manifest information of an `.mdz` archive |
+| `textconv` | Print an archive as plain text, so `git diff` shows what changed inside it |
 
 ---
 
@@ -245,6 +246,43 @@ mdz inspect my-doc.mdz
 ```
 
 `inspect` surfaces `manifest.spec.version` (falling back to legacy `mdz` if present), `manifest.mode`, and other key manifest metadata.
+
+---
+
+### `mdz textconv <archive>`
+
+Prints an archive as plain text for Git. Git treats an `.mdz` as binary, so `git diff` and `git log -p` normally show only "Binary files differ". With `textconv` set up, they show the lines that changed in each document inside the archive.
+
+Set it up once per repository, and commit the `.gitattributes` line:
+
+```bash
+echo "*.mdz diff=mdz" >> .gitattributes
+```
+
+Then once in each clone (Git doesn't let a repository choose commands to run, so every clone opts in):
+
+```bash
+git config diff.mdz.textconv "mdz textconv"
+git config diff.mdz.cachetextconv true
+```
+
+Clones without the `git config` lines still work: they show "Binary files differ" as before.
+
+Each file in the archive becomes a section headed `===== path =====`: `manifest.json` first, then the rest in path order. Text files (Markdown, JSON, SVG, CSS and similar) are printed in full; binary files such as images are one line with their size and SHA-256, so a replaced image shows up as a changed line:
+
+```diff
+ ===== index.md =====
+ # Story
+
+-- Users can reset their password
++- Users can reset their password by email
++- The link expires after 1 hour
+ ===== images/login.png =====
+-[binary, 48211 bytes, sha256 9f2c…]
++[binary, 51007 bytes, sha256 1ab4…]
+```
+
+It helps wherever Git computes the diff on your machine: `git diff`, `git log -p`, `git show`, and editors' Git views. The diff views on GitHub and Azure DevOps don't run it, and it doesn't merge: two branches changing the same `.mdz` still conflict ([#14](https://github.com/mdzip-project/mdzip-cli/issues/14) proposes a merge driver). A file that isn't a readable archive, such as a Git LFS pointer, is printed as it is, so the diff never fails. The output matches mdzip.org's `scripts/mdz-textconv.mjs`.
 
 ---
 

@@ -41,6 +41,7 @@ var rootCommand = new RootCommand(
     LsCommand.Build(),
     InspectCommand.Build(),
     CatCommand.Build(),
+    TextconvCommand.Build(),
     AssetsCommand.Build(),
     ManifestCommand.Build(),
     WorkspaceCommand.Build(),
