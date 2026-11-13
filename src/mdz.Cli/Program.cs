@@ -42,6 +42,7 @@ var rootCommand = new RootCommand(
     InspectCommand.Build(),
     CatCommand.Build(),
     TextconvCommand.Build(),
+    MergeCommand.Build(),
     AssetsCommand.Build(),
     ManifestCommand.Build(),
     WorkspaceCommand.Build(),

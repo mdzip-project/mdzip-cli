@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **`mdz merge`, a Git merge driver** ([#14](https://github.com/mdzip-project/mdzip-cli/issues/14)): when two branches change the same `.mdz`, Git merges the archives entry by entry instead of reporting a whole-file conflict. Text entries (Markdown, SVG, CSV and similar) are merged with `git merge-file`, so edits to different parts of a document merge cleanly and overlapping edits get conflict markers, with the original text, inside that document while the archive stays valid. Binary entries take the side that changed; when both changed one, yours is kept and theirs is added as `name.theirs.ext`. Added and deleted entries are applied, and an entry deleted on one side and changed on the other is kept. `manifest.json` is merged field by field (`modified` takes the later time, `created` the earlier, and a field set differently on both sides keeps yours; `files` merges by path) and stays valid JSON. Unresolved items are listed on stderr and the exit code tells Git the file is conflicted. If a version isn't a readable archive, yours is left untouched. Setup is in the README.
+
+### Tests
+- `merge`: edits to different paragraphs merge cleanly; overlapping edits get markers with the base and the archive stays valid; added and removed entries, with `manifest.json` written first; an image changed on one side and on both; delete vs. change; manifest fields, timestamps and `files`; both sides adding the archive (empty base); an unreadable side. Also checked with real `git merge` runs.
+
 ## [2.1.0] - 2026-11-12
 
 ### Added

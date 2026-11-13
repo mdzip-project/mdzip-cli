@@ -117,7 +117,8 @@ public static class TextconvCommand
         return output.ToString();
     }
 
-    private static bool IsTextPath(string entryPath)
+    /// <summary>Whether an entry is text, by its extension (shared with <see cref="MergeCommand"/>).</summary>
+    internal static bool IsTextPath(string entryPath)
     {
         var name = entryPath[(entryPath.LastIndexOf('/') + 1)..];
         var dot = name.LastIndexOf('.');

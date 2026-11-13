@@ -98,6 +98,7 @@ Note: `<archive>` is the `.mdz` file path; `.mdz` extension is optional.
 | `ls` | List the contents of an `.mdz` archive |
 | `inspect` | Inspect metadata and manifest information of an `.mdz` archive |
 | `textconv` | Print an archive as plain text, so `git diff` shows what changed inside it |
+| `merge` | Merge two versions of an archive, for `git merge` |
 
 ---
 
@@ -282,7 +283,41 @@ Each file in the archive becomes a section headed `===== path =====`: `manifest.
 +[binary, 51007 bytes, sha256 1ab4…]
 ```
 
-It helps wherever Git computes the diff on your machine: `git diff`, `git log -p`, `git show`, and editors' Git views. The diff views on GitHub and Azure DevOps don't run it, and it doesn't merge: two branches changing the same `.mdz` still conflict ([#14](https://github.com/mdzip-project/mdzip-cli/issues/14) proposes a merge driver). A file that isn't a readable archive, such as a Git LFS pointer, is printed as it is, so the diff never fails. The output matches mdzip.org's `scripts/mdz-textconv.mjs`.
+It helps wherever Git computes the diff on your machine: `git diff`, `git log -p`, `git show`, and editors' Git views. The diff views on GitHub and Azure DevOps don't run it, and it doesn't merge; for that, set up [`mdz merge`](#mdz-merge-base-ours-theirs). A file that isn't a readable archive, such as a Git LFS pointer, is printed as it is, so the diff never fails. The output matches mdzip.org's `scripts/mdz-textconv.mjs`.
+
+---
+
+### `mdz merge <base> <ours> <theirs>`
+
+A Git merge driver for `.mdz` files. Git can't merge a ZIP file, so when two branches change the same archive it normally reports a conflict and you keep one whole version. With `mdz merge` set up, Git merges the archives entry by entry:
+
+- **Documents and other text files** (Markdown, SVG, CSV and similar) are merged the way Git merges code. Edits to different parts of a document merge cleanly. Edits to the same lines get conflict markers inside that document, including the original text, and the archive stays valid, so you can fix them in any editor that opens `.mdz` files.
+- **Images and other binary files:** the side that changed wins. If both sides changed the same image, yours is kept and theirs is added beside it as `name.theirs.png`, so nothing is lost.
+- **Added and deleted files** are applied. A file one side deleted and the other changed is kept, changed.
+- **`manifest.json`** is merged field by field and stays valid: `modified` takes the later time, `created` the earlier one, and a field both sides set differently keeps yours.
+
+Anything left to resolve is listed in the merge output, and Git marks the archive as conflicted:
+
+```text
+mdz merge: docs/notes.mdz: 1 conflict to resolve:
+  index.md: 1 conflict marked in the text.
+CONFLICT (content): Merge conflict in docs/notes.mdz
+```
+
+Set it up once per repository, and commit the `.gitattributes` line (it can share a line with `diff=mdz`):
+
+```bash
+echo "*.mdz merge=mdz diff=mdz" >> .gitattributes
+```
+
+Then once in each clone (as with `textconv`, every clone opts in):
+
+```bash
+git config merge.mdz.name "MDZip archive merge"
+git config merge.mdz.driver "mdz merge %O %A %B --marker-size %L --path %P"
+```
+
+Text files are merged by `git merge-file`, so `git` must be on the PATH, as it is wherever Git runs the driver. Clones without the `git config` lines get a whole-file conflict, as before. The driver runs only where Git merges on your machine: GitHub's and Azure DevOps' merge buttons and web conflict editors don't run it, so merge branches that both changed an `.mdz` locally. If one of the versions isn't a readable archive (a Git LFS pointer, a damaged file), your version is left as it was and the merge reports a conflict. `--ours-label`, `--base-label` and `--theirs-label` change the names on the conflict markers (default `ours`, `base`, `theirs`).
 
 ---
 
