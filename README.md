@@ -294,6 +294,7 @@ A Git merge driver for `.mdz` files. Git can't merge a ZIP file, so when two bra
 - **Documents and other text files** (Markdown, SVG, CSV and similar) are merged the way Git merges code. Edits to different parts of a document merge cleanly. Edits to the same lines get conflict markers inside that document, including the original text, and the archive stays valid, so you can fix them in any editor that opens `.mdz` files.
 - **Images and other binary files:** the side that changed wins. If both sides changed the same image, yours is kept and theirs is added beside it as `name.theirs.png`, so nothing is lost.
 - **Added and deleted files** are applied. A file one side deleted and the other changed is kept, changed.
+- **Renamed files** are followed: a file one side moved or renamed (the same content, or for text mostly the same lines) takes the other side's changes at its new name. If both sides renamed it differently, your name is kept.
 - **`manifest.json`** is merged field by field and stays valid: `modified` takes the later time, `created` the earlier one, and a field both sides set differently keeps yours.
 
 Anything left to resolve is listed in the merge output, and Git marks the archive as conflicted:

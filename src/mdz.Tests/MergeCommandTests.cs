@@ -56,6 +56,12 @@ public sealed class MergeCommandTests : IDisposable
     private static MergeCommand.MergeResult Merge(string b, string o, string t) =>
         MergeCommand.Merge(b, o, t, new MergeCommand.MergeOptions(OursLabel: "HEAD", TheirsLabel: "feature"));
 
+    private static List<string> EntryNames(string archive)
+    {
+        using var zip = ZipFile.OpenRead(archive);
+        return zip.Entries.Select(e => e.FullName).ToList();
+    }
+
     private static void AssertValid(string archive)
     {
         var result = MdzArchive.Validate(archive);
@@ -231,5 +237,68 @@ public sealed class MergeCommandTests : IDisposable
         Assert.Equal(2, result.ExitCode);
         Assert.Equal(before, File.ReadAllBytes(o));
         Assert.Contains(result.Messages, m => m.Contains("git checkout --ours"));
+    }
+
+    [Fact]
+    public void AnImageRenamedOnOneSideTakesTheOtherSidesReplacement()
+    {
+        byte[] Png(byte fill) => [0x89, 0x50, 0x4E, 0x47, 0, fill, fill, fill];
+        var b = ArchiveBytes(("index.md", Encoding.UTF8.GetBytes("![](images/a.png)\n")), ("images/a.png", Png(1)));
+        // Ours renames the image (and its link); theirs replaces the picture.
+        var o = ArchiveBytes(("index.md", Encoding.UTF8.GetBytes("![](images/chart.png)\n")), ("images/chart.png", Png(1)));
+        var t = ArchiveBytes(("index.md", Encoding.UTF8.GetBytes("![](images/a.png)\n")), ("images/a.png", Png(2)));
+
+        var result = Merge(b, o, t);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Empty(result.Conflicts);
+        Assert.Equal(Png(2), MdzArchive.ReadBytes(o, "images/chart.png"));
+        Assert.DoesNotContain("images/a.png", EntryNames(o));
+        Assert.Equal("![](images/chart.png)\n", Text(o, "index.md"));
+    }
+
+    [Fact]
+    public void ADocumentRenamedAndEditedOnOneSideMergesTheOtherSidesEdits()
+    {
+        var b = Archive(("index.md", "# Home\n"), ("notes.md", Doc));
+        var o = Archive(("index.md", "# Home\n"), ("chapters/notes.md", Doc.Replace("First paragraph.", "First paragraph, moved and edited.")));
+        var t = Archive(("index.md", "# Home\n"), ("notes.md", Doc.Replace("Third paragraph.", "Third paragraph, edited there.")));
+
+        var result = Merge(b, o, t);
+
+        Assert.Equal(0, result.ExitCode);
+        var merged = Text(o, "chapters/notes.md");
+        Assert.Contains("First paragraph, moved and edited.", merged);
+        Assert.Contains("Third paragraph, edited there.", merged);
+        Assert.DoesNotContain("notes.md", EntryNames(o));
+    }
+
+    [Fact]
+    public void RenamedOnBothSidesToDifferentNamesKeepsOursAndReportsIt()
+    {
+        var b = Archive(("index.md", "# Home\n"), ("notes.md", Doc));
+        var o = Archive(("index.md", "# Home\n"), ("ours-name.md", Doc));
+        var t = Archive(("index.md", "# Home\n"), ("theirs-name.md", Doc.Replace("Third paragraph.", "Third paragraph, edited there.")));
+
+        var result = Merge(b, o, t);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains(result.Conflicts, c => c.Contains("renamed to ours-name.md in HEAD and to theirs-name.md in feature"));
+        Assert.Contains("Third paragraph, edited there.", Text(o, "ours-name.md"));
+        Assert.DoesNotContain("theirs-name.md", EntryNames(o));
+    }
+
+    [Fact]
+    public void ADifferentFileAddedBesideADeletionIsNotARename()
+    {
+        var b = Archive(("index.md", "# Home\n"), ("old.md", "Alpha\nBeta\nGamma\n"));
+        var o = Archive(("index.md", "# Home\n"), ("new.md", "Something\nelse\nentirely\n"));
+        var t = Archive(("index.md", "# Home\n"), ("old.md", "Alpha\nBeta\nGamma\n"));
+
+        var result = Merge(b, o, t);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("Something\nelse\nentirely\n", Text(o, "new.md"));
+        Assert.DoesNotContain("old.md", EntryNames(o));
     }
 }

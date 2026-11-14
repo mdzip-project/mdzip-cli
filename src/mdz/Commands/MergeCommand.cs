@@ -115,6 +115,8 @@ public static class MergeCommand
         }
 
         var conflicts = new List<string>();
+        // A file one side renamed lines up with the other side's version of it.
+        ApplyRenames(baseEntries, oursEntries, oursOrder, theirsEntries, theirsOrder, options, conflicts);
         var merged = new Dictionary<string, Entry>(StringComparer.Ordinal);
         var order = new List<string>();
         void Put(Entry entry)
@@ -166,7 +168,7 @@ public static class MergeCommand
             Put(o);
             var copy = FreePath(TheirsCopyPath(path), p => merged.ContainsKey(p) || oursEntries.ContainsKey(p) || theirsEntries.ContainsKey(p));
             Put(t with { Path = copy });
-            conflicts.Add($"{path}: changed on both sides; kept {options.OursLabel}, and {options.TheirsLabel}'s version is in {copy}.");
+            conflicts.Add($"{path}: changed on both sides; kept the {options.OursLabel} version, and the {options.TheirsLabel} version is in {copy}.");
         }
 
         var manifest = MergeManifest(baseEntries, oursEntries, theirsEntries, options, conflicts);
@@ -187,6 +189,118 @@ public static class MergeCommand
         messages.Add($"mdz merge: {name}: {conflicts.Count} conflict{(conflicts.Count == 1 ? "" : "s")} to resolve:");
         messages.AddRange(conflicts.Select(c => "  " + c));
         return new MergeResult(1, messages, conflicts);
+    }
+
+    // ---------------------------------------------------------------- renames
+
+    /// <summary>Text files at least this similar (shared lines) count as renamed.</summary>
+    private const double RenameSimilarity = 0.6;
+
+    /// <summary>
+    /// Finds entries one side renamed (gone from its old path, at a new path with the same
+    /// content, or for text, mostly the same lines) and moves the ancestor's and the other
+    /// side's versions to the new path, so the entry merges as one file there: the other
+    /// side's edits follow the rename. When both sides renamed an entry to different paths,
+    /// ours wins and the conflict is reported.
+    /// </summary>
+    private static void ApplyRenames(
+        Dictionary<string, Entry> baseEntries,
+        Dictionary<string, Entry> oursEntries, List<string> oursOrder,
+        Dictionary<string, Entry> theirsEntries, List<string> theirsOrder,
+        MergeOptions options, List<string> conflicts)
+    {
+        var oursRenames = FindRenames(baseEntries, oursEntries);
+        var theirsRenames = FindRenames(baseEntries, theirsEntries);
+        if (oursRenames.Count == 0 && theirsRenames.Count == 0) return;
+
+        void Move(Dictionary<string, Entry> entries, List<string> order, string from, string to)
+        {
+            if (!entries.Remove(from, out var entry) || entries.ContainsKey(to)) return;
+            entries[to] = entry with { Path = to };
+            var index = order.IndexOf(from);
+            if (index >= 0) order[index] = to; else order.Add(to);
+        }
+
+        foreach (var (from, to) in oursRenames)
+        {
+            if (theirsRenames.TryGetValue(from, out var theirsTo) && theirsTo != to)
+            {
+                // Renamed on both sides, differently: keep ours' name, with their content merged in.
+                Move(theirsEntries, theirsOrder, theirsTo, to);
+                conflicts.Add($"{from}: renamed to {to} in {options.OursLabel} and to {theirsTo} in {options.TheirsLabel}; kept {to}.");
+            }
+            else if (!theirsRenames.ContainsKey(from))
+            {
+                Move(theirsEntries, theirsOrder, from, to);
+            }
+            if (baseEntries.Remove(from, out var original) && !baseEntries.ContainsKey(to))
+                baseEntries[to] = original with { Path = to };
+        }
+        foreach (var (from, to) in theirsRenames)
+        {
+            if (oursRenames.ContainsKey(from)) continue;
+            Move(oursEntries, oursOrder, from, to);
+            if (baseEntries.Remove(from, out var original) && !baseEntries.ContainsKey(to))
+                baseEntries[to] = original with { Path = to };
+        }
+    }
+
+    /// <summary>Old path → new path for each entry <paramref name="side"/> renamed from <paramref name="baseEntries"/>.</summary>
+    private static Dictionary<string, string> FindRenames(Dictionary<string, Entry> baseEntries, Dictionary<string, Entry> side)
+    {
+        var renames = new Dictionary<string, string>(StringComparer.Ordinal);
+        var removed = baseEntries.Keys.Where(p => p != ManifestPath && !side.ContainsKey(p)).ToList();
+        var added = side.Keys.Where(p => p != ManifestPath && !baseEntries.ContainsKey(p)).ToList();
+        if (removed.Count == 0 || added.Count == 0) return renames;
+
+        var candidates = new List<(double Score, string From, string To)>();
+        foreach (var from in removed)
+        {
+            var original = baseEntries[from];
+            foreach (var to in added)
+            {
+                var entry = side[to];
+                if (original.Bytes.AsSpan().SequenceEqual(entry.Bytes))
+                {
+                    candidates.Add((2, from, to)); // identical beats any similarity
+                    continue;
+                }
+                if (!string.Equals(Path.GetExtension(from), Path.GetExtension(to), StringComparison.OrdinalIgnoreCase)
+                    || !IsText(from, original, entry))
+                    continue;
+                var score = LineSimilarity(original.Bytes, entry.Bytes);
+                if (score >= RenameSimilarity) candidates.Add((score, from, to));
+            }
+        }
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (_, from, to) in candidates.OrderByDescending(c => c.Score).ThenBy(c => c.From, StringComparer.Ordinal))
+        {
+            if (renames.ContainsKey(from) || !taken.Add(to)) continue;
+            renames[from] = to;
+        }
+        return renames;
+    }
+
+    /// <summary>Dice coefficient of the two texts' non-blank lines: 1 for the same lines, 0 for none shared.</summary>
+    private static double LineSimilarity(byte[] a, byte[] b)
+    {
+        static Dictionary<string, int> Lines(byte[] bytes)
+        {
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var raw in Encoding.UTF8.GetString(bytes).Split('\n'))
+            {
+                var line = raw.TrimEnd('\r');
+                if (line.Trim().Length == 0) continue;
+                counts[line] = counts.GetValueOrDefault(line) + 1;
+            }
+            return counts;
+        }
+        var linesA = Lines(a);
+        var linesB = Lines(b);
+        var total = linesA.Values.Sum() + linesB.Values.Sum();
+        if (total == 0) return 0;
+        var shared = linesA.Sum(pair => Math.Min(pair.Value, linesB.GetValueOrDefault(pair.Key)));
+        return 2.0 * shared / total;
     }
 
     // ---------------------------------------------------------------- archive I/O
